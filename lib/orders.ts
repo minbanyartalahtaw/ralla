@@ -1,11 +1,35 @@
 /**
- * Order domain — the single source of truth for order shape and status.
+ * Order domain — presentation metadata for the values the database defines.
  *
- * Safe to import from both server and client. The persistence layer lives in
- * lib/order-store.ts and must never be imported from a Client Component.
+ * The status and payment types come from the Prisma schema, so the UI can't
+ * drift from what the database will actually accept. This file only adds the
+ * things a schema can't hold: labels, descriptions and colors.
+ *
+ * Safe to import from both server and client.
  */
 
-export const DELIVERY_STATUS = {
+import { DeliveryStatus, PaymentMethod } from "@/generated/prisma/enums";
+import type { OrderModel, OrderItemModel } from "@/generated/prisma/models";
+
+export { DeliveryStatus, PaymentMethod };
+
+/** Row shapes Prisma returns. Aliased so app code reads naturally. */
+export type Order = OrderModel;
+export type OrderItem = OrderItemModel;
+
+/** An order with its lines, which is how the UI always wants it. */
+export type OrderWithItems = Order & { items: OrderItem[] };
+
+type StatusMeta = {
+  label: string;
+  description: string;
+  /** Tailwind classes for the status chip. */
+  chip: string;
+  /** Tailwind class for the status dot. */
+  dot: string;
+};
+
+export const DELIVERY_STATUS: Record<DeliveryStatus, StatusMeta> = {
   pending: {
     label: "Pending",
     description: "Order received, not yet picked",
@@ -36,21 +60,17 @@ export const DELIVERY_STATUS = {
     chip: "bg-cancelled-soft text-cancelled",
     dot: "bg-cancelled",
   },
-} as const;
-
-export type DeliveryStatus = keyof typeof DELIVERY_STATUS;
+};
 
 export const DELIVERY_STATUS_KEYS = Object.keys(
   DELIVERY_STATUS,
 ) as DeliveryStatus[];
 
-export const PAYMENT_METHOD = {
+export const PAYMENT_METHOD: Record<PaymentMethod, string> = {
   paid: "Paid",
   cod: "Cash on delivery",
   refunded: "Refunded",
-} as const;
-
-export type PaymentMethod = keyof typeof PAYMENT_METHOD;
+};
 
 export const PAYMENT_METHOD_KEYS = Object.keys(
   PAYMENT_METHOD,
@@ -67,34 +87,44 @@ export const CITIES = [
   "Monywa",
 ] as const;
 
-export type Order = {
-  id: string;
-  /**
-   * The saved customer this order came from, when there was one. Optional —
-   * a one-off buyer can be typed in without a customer record.
-   *
-   * The fields below are a *copy* taken at save time, not a live join: if the
-   * customer later moves or renames, this order must still show where it was
-   * actually delivered. See the Domain section in CLAUDE.md.
-   */
-  customerId?: string;
-  customer: string;
-  phone: string;
-  city: string;
-  address: string;
-  items: string;
-  itemCount: number;
-  /** Kyats, stored as an integer. Never a float. */
-  total: number;
-  payment: PaymentMethod;
-  status: DeliveryStatus;
-  notifyBySms: boolean;
-  placedAt: string;
-};
-
-/** Everything the create form supplies. The rest is assigned by the server. */
-export type NewOrder = Omit<Order, "id" | "status" | "placedAt">;
-
 export function formatKyat(amount: number) {
   return `${amount.toLocaleString("en-US")} Ks`;
+}
+
+/**
+ * Myanmar is UTC+06:30. Formatting must name the zone explicitly — slicing an
+ * ISO string gives the UTC date, which is wrong for anything placed before
+ * 06:30 local.
+ */
+export const TIME_ZONE = "Asia/Yangon";
+
+export function formatDate(value: Date) {
+  return value.toLocaleDateString("en-GB", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+export function formatDateTime(value: Date) {
+  return value.toLocaleString("en-GB", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Line totals must reconcile with the order total — this is the one formula. */
+export function lineTotal(item: { unitPrice: number; quantity: number }) {
+  return item.unitPrice * item.quantity;
+}
+
+export function itemsTotal(items: { unitPrice: number; quantity: number }[]) {
+  return items.reduce((sum, item) => sum + lineTotal(item), 0);
+}
+
+export function itemCount(items: { quantity: number }[]) {
+  return items.reduce((sum, item) => sum + item.quantity, 0);
 }

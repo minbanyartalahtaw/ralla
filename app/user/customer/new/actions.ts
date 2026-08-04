@@ -68,6 +68,6 @@ export async function createCustomerAction(
 
   return {
     errors: {},
-    created: { id: customer.id, tiktokUsername: customer.tiktokUsername },
+    created: { id: customer.code, tiktokUsername: customer.tiktokUsername },
   };
 }

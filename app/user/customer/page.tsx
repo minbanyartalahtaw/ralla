@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { listCustomers } from "@/lib/customer-store";
 import { formatTiktokHandle } from "@/lib/customers";
+import { formatDate } from "@/lib/orders";
 
 export const metadata: Metadata = {
   title: "Customers — RALLA",
@@ -74,7 +75,7 @@ export default async function CustomersPage() {
                       this can't, so it leads the row. */}
                   <TableCell>
                     <span className="numeric font-mono text-[11px] font-medium">
-                      {c.id}
+                      {c.code}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -103,7 +104,7 @@ export default async function CustomersPage() {
                     </div>
                   </TableCell>
                   <TableCell className="numeric text-muted-foreground">
-                    {c.createdAt}
+                    {formatDate(c.createdAt)}
                   </TableCell>
                   <TableCell className="max-w-[240px]">
                     {c.note ? (

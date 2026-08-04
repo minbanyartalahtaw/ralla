@@ -16,7 +16,9 @@ import { listOrders } from "@/lib/order-store";
 import {
   DELIVERY_STATUS,
   PAYMENT_METHOD,
+  formatDate,
   formatKyat,
+  itemCount,
   type DeliveryStatus,
 } from "@/lib/orders";
 
@@ -91,11 +93,11 @@ export default async function OrdersPage() {
                 <TableRow key={o.id}>
                   <TableCell>
                     <span className="numeric font-mono text-[11px] font-medium">
-                      {o.id}
+                      {o.code}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{o.customer}</div>
+                    <div className="font-medium">{o.customerName}</div>
                     <div className="numeric text-[11px] text-muted-foreground">
                       {o.phone} · {o.city}
                     </div>
@@ -103,12 +105,12 @@ export default async function OrdersPage() {
                   <TableCell className="max-w-[240px]">
                     <div
                       className="truncate text-muted-foreground"
-                      title={o.items}
+                      title={o.items.map((i) => `${i.name} x${i.quantity}`).join(", ")}
                     >
-                      {o.items}
+                      {o.items.map((i) => i.name).join(", ")}
                     </div>
                     <div className="numeric text-[11px] text-muted-foreground">
-                      {o.itemCount} items
+                      {itemCount(o.items)} items
                     </div>
                   </TableCell>
                   <TableCell className="numeric text-right font-medium">
@@ -117,19 +119,19 @@ export default async function OrdersPage() {
                   <TableCell>
                     <span
                       className={
-                        o.payment === "refunded"
+                        o.paymentMethod === "refunded"
                           ? "font-medium text-destructive"
                           : "text-muted-foreground"
                       }
                     >
-                      {PAYMENT_METHOD[o.payment]}
+                      {PAYMENT_METHOD[o.paymentMethod]}
                     </span>
                   </TableCell>
                   <TableCell>
                     <StatusChip status={o.status} />
                   </TableCell>
                   <TableCell className="numeric text-muted-foreground">
-                    {o.placedAt}
+                    {formatDate(o.placedAt)}
                   </TableCell>
                 </TableRow>
               ))}

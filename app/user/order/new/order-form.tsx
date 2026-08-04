@@ -16,24 +16,14 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  CITIES,
-  PAYMENT_METHOD,
-  PAYMENT_METHOD_KEYS,
-  formatKyat,
-} from "@/lib/orders";
+import { CITIES, PAYMENT_METHOD, PAYMENT_METHOD_KEYS } from "@/lib/orders";
 
 import type { Customer } from "@/lib/customers";
+import type { Product } from "@/lib/product-store";
 
 import { createOrderAction } from "./actions";
 import { CustomerSearch } from "./customer-search";
+import { OrderLines, blankLine, type Line } from "./order-lines";
 import { emptyCreateOrderState } from "./state";
 
 function FieldError({ id, message }: { id: string; message?: string }) {
@@ -68,7 +58,7 @@ function Label({
   );
 }
 
-export function OrderForm() {
+export function OrderForm({ products }: { products: Product[] }) {
   const [state, formAction, pending] = useActionState(
     createOrderAction,
     emptyCreateOrderState,
@@ -77,7 +67,7 @@ export function OrderForm() {
   // The Combobox holds its value in React state, so a hidden input carries it
   // into the FormData the Server Action receives.
   const [city, setCity] = React.useState<string | null>(null);
-  const [total, setTotal] = React.useState("");
+  const [lines, setLines] = React.useState<Line[]>(() => [blankLine()]);
 
   // Controlled so the TikTok search can fill them. Still editable afterwards —
   // what gets saved is whatever is in the fields, not the customer record, so
@@ -104,10 +94,6 @@ export function OrderForm() {
   }
 
   const { errors } = state;
-  const parsedTotal = Number.parseInt(total.replace(/,/g, ""), 10);
-  const totalPreview = Number.isSafeInteger(parsedTotal) && parsedTotal > 0
-    ? formatKyat(parsedTotal)
-    : null;
 
   if (state.createdId) {
     return (
@@ -270,58 +256,35 @@ export function OrderForm() {
         </div>
         <div className="grid gap-4 p-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Label htmlFor="items">Products</Label>
-            <Textarea
-              id="items"
-              name="items"
-              placeholder=""
-              aria-invalid={!!errors.items}
-              aria-describedby={errors.items ? "items-error" : undefined}
+            {/* The lines live in React state, so hidden inputs carry them into
+                the FormData the Server Action receives. Order is preserved,
+                which is what lets the action read them as parallel arrays. */}
+            {lines.map((line) => (
+              <React.Fragment key={line.key}>
+                <input type="hidden" name="lineName" value={line.name} />
+                <input
+                  type="hidden"
+                  name="lineProductId"
+                  value={line.productId ?? ""}
+                />
+                <input
+                  type="hidden"
+                  name="lineUnitPrice"
+                  value={line.unitPrice}
+                />
+                <input
+                  type="hidden"
+                  name="lineQuantity"
+                  value={line.quantity}
+                />
+              </React.Fragment>
+            ))}
+            <OrderLines
+              products={products}
+              lines={lines}
+              onChange={setLines}
+              error={errors.lines}
             />
-            <FieldError id="items-error" message={errors.items} />
-          </div>
-
-          <div>
-            <Label htmlFor="itemCount">Item count</Label>
-            <Input
-              id="itemCount"
-              name="itemCount"
-              inputMode="numeric"
-              defaultValue="1"
-              className="numeric"
-              aria-invalid={!!errors.itemCount}
-              aria-describedby={errors.itemCount ? "itemCount-error" : undefined}
-            />
-            <FieldError id="itemCount-error" message={errors.itemCount} />
-          </div>
-
-          <div>
-            <Label htmlFor="total">Total</Label>
-            <InputGroup
-              data-invalid={errors.total ? true : undefined}
-              className={errors.total ? "border-destructive" : undefined}
-            >
-              <InputGroupInput
-                id="total"
-                name="total"
-                inputMode="numeric"
-                placeholder=""
-                className="numeric"
-                value={total}
-                onChange={(e) => setTotal(e.target.value)}
-                aria-invalid={!!errors.total}
-                aria-describedby={errors.total ? "total-error" : undefined}
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupText>Ks</InputGroupText>
-              </InputGroupAddon>
-            </InputGroup>
-            {totalPreview ? (
-              <p className="numeric mt-1 text-[11px] text-muted-foreground">
-                {totalPreview}
-              </p>
-            ) : null}
-            <FieldError id="total-error" message={errors.total} />
           </div>
 
           <div className="sm:col-span-2">
