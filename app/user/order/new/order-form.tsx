@@ -259,9 +259,10 @@ export function OrderForm({ products }: { products: Product[] }) {
             {/* The lines live in React state, so hidden inputs carry them into
                 the FormData the Server Action receives. Order is preserved,
                 which is what lets the action read them as parallel arrays. */}
+            {/* The item name isn't sent: the action reads it from the product
+                so the snapshot always matches the catalog, not the browser. */}
             {lines.map((line) => (
               <React.Fragment key={line.key}>
-                <input type="hidden" name="lineName" value={line.name} />
                 <input
                   type="hidden"
                   name="lineProductId"

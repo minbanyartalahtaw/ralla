@@ -2,9 +2,21 @@
 
 import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, Delete02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
+import {
+  Alert02Icon,
+  Delete02Icon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -12,14 +24,15 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "@/components/ui/input-group";
-import type { Product } from "@/lib/product-store";
 import { formatKyat } from "@/lib/orders";
+import type { Product } from "@/lib/products";
 
 export type Line = {
   /** Stable across re-renders so React keys don't reshuffle rows on delete. */
   key: string;
+  /** Null only before a product is chosen — every saved line has one. */
   productId: number | null;
-  name: string;
+  /** Prefilled from the product, then editable for a one-off discount. */
   unitPrice: string;
   quantity: string;
 };
@@ -30,7 +43,6 @@ export function blankLine(): Line {
   return {
     key: `line-${nextKey}`,
     productId: null,
-    name: "",
     unitPrice: "",
     quantity: "1",
   };
@@ -45,6 +57,7 @@ function toWholeNumber(raw: string): number | null {
 }
 
 export function lineAmount(line: Line): number | null {
+  if (line.productId === null) return null;
   const price = toWholeNumber(line.unitPrice);
   const qty = toWholeNumber(line.quantity);
   if (price === null || qty === null || qty < 1) return null;
@@ -58,10 +71,12 @@ export function linesTotal(lines: Line[]): number {
 /**
  * Editable order lines.
  *
+ * Every line is a catalog product — there is no free-text item, so a typo can
+ * never invent a product that reporting then has to account for. Add it on the
+ * Products page first.
+ *
  * The order total is computed from these rows and never typed, so the stored
- * total can't disagree with what it's made of. Picking a catalog product fills
- * the name and price but both stay editable — a one-off discount shouldn't
- * require changing the product.
+ * total can't disagree with what it's made of.
  */
 export function OrderLines({
   products,
@@ -83,25 +98,21 @@ export function OrderLines({
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
-  function pickProduct(key: string, value: string) {
-    if (value === "") {
-      update(key, { productId: null });
+  function pickProduct(key: string, product: Product | null) {
+    if (!product) {
+      update(key, { productId: null, unitPrice: "" });
       return;
     }
-    const product = byId.get(Number(value));
-    if (!product) return;
-    update(key, {
-      productId: product.id,
-      name: product.name,
-      unitPrice: String(product.price),
-    });
+    // Price comes from the catalog, then stays editable for a discount.
+    update(key, { productId: product.id, unitPrice: String(product.price) });
   }
 
   const total = linesTotal(lines);
+  const chosen = (line: Line) =>
+    line.productId === null ? null : (byId.get(line.productId) ?? null);
 
   return (
     <div>
-      {/* Header row: only useful once there's width for it. */}
       <div className="hidden gap-2 px-1 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase sm:grid sm:grid-cols-[1fr_5rem_8rem_2rem]">
         <span>Product</span>
         <span>Qty</span>
@@ -110,86 +121,81 @@ export function OrderLines({
       </div>
 
       <ul className="space-y-2">
-        {lines.map((line) => {
-          const amount = lineAmount(line);
-          return (
-            <li
-              key={line.key}
-              className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_5rem_8rem_2rem] sm:items-start sm:rounded-none sm:border-0 sm:p-0"
+        {lines.map((line) => (
+          <li
+            key={line.key}
+            className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_5rem_8rem_2rem] sm:items-start sm:rounded-none sm:border-0 sm:p-0"
+          >
+            <Combobox
+              items={products}
+              value={chosen(line)}
+              onValueChange={(p: Product | null) => pickProduct(line.key, p)}
+              // Selected state shows the name alone; the price is already in
+              // its own column by then.
+              itemToStringLabel={(p: Product) => p.name}
             >
-              <div className="grid gap-1">
-                <select
-                  aria-label="Catalog product"
-                  className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
-                  value={line.productId ?? ""}
-                  onChange={(e) => pickProduct(line.key, e.target.value)}
-                >
-                  <option value="">Custom item…</option>
+              <ComboboxInput
+                id={`${line.key}-product`}
+                aria-label="Product"
+                placeholder="Search a product"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>
+                  No product matches. Add it on the Products page first.
+                </ComboboxEmpty>
+                <ComboboxList>
                   {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} — {formatKyat(p.price)}
-                    </option>
+                    <ComboboxItem key={p.id} value={p} className="pr-8">
+                      <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+                        <span className="truncate">{p.name}</span>
+                        <span className="numeric shrink-0 text-[11px] text-muted-foreground">
+                          {formatKyat(p.price)}
+                        </span>
+                      </span>
+                    </ComboboxItem>
                   ))}
-                </select>
-                <Input
-                  aria-label="Item name"
-                  placeholder="Item name"
-                  value={line.name}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+
+            <Input
+              aria-label="Quantity"
+              inputMode="numeric"
+              className="numeric"
+              value={line.quantity}
+              onChange={(e) => update(line.key, { quantity: e.target.value })}
+            />
+
+            <div>
+              <InputGroup>
+                <InputGroupInput
+                  aria-label="Unit price"
+                  inputMode="numeric"
+                  className="numeric"
+                  value={line.unitPrice}
                   onChange={(e) =>
-                    // Typing over the name detaches it from the catalog entry,
-                    // so reporting never credits a sale to the wrong product.
-                    update(line.key, {
-                      name: e.target.value,
-                      productId: null,
-                    })
+                    update(line.key, { unitPrice: e.target.value })
                   }
                 />
-              </div>
+                <InputGroupAddon align="inline-end">
+                  <InputGroupText>Ks</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
+            </div>
 
-              <Input
-                aria-label="Quantity"
-                inputMode="numeric"
-                className="numeric"
-                value={line.quantity}
-                onChange={(e) => update(line.key, { quantity: e.target.value })}
-              />
-
-              <div>
-                <InputGroup>
-                  <InputGroupInput
-                    aria-label="Unit price"
-                    inputMode="numeric"
-                    className="numeric"
-                    value={line.unitPrice}
-                    onChange={(e) =>
-                      update(line.key, { unitPrice: e.target.value })
-                    }
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupText>Ks</InputGroupText>
-                  </InputGroupAddon>
-                </InputGroup>
-                <p className="numeric mt-1 text-right text-[11px] text-muted-foreground">
-                  {amount === null ? "—" : formatKyat(amount)}
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Remove line"
-                // Never leave the form with zero lines — an order must have one.
-                disabled={lines.length === 1}
-                onClick={() =>
-                  onChange(lines.filter((l) => l.key !== line.key))
-                }
-              >
-                <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.5} />
-              </Button>
-            </li>
-          );
-        })}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Remove line"
+              // Never leave the form with zero lines — an order must have one.
+              disabled={lines.length === 1}
+              onClick={() => onChange(lines.filter((l) => l.key !== line.key))}
+            >
+              <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.5} />
+            </Button>
+          </li>
+        ))}
       </ul>
 
       <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">

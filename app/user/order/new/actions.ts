@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { searchCustomers } from "@/lib/customer-store";
 import type { Customer } from "@/lib/customers";
-import { createOrder, type NewOrderLine } from "@/lib/order-store";
+import { createOrder } from "@/lib/order-store";
+import { getProduct } from "@/lib/product-store";
 import { CITIES, PAYMENT_METHOD, type PaymentMethod } from "@/lib/orders";
+import { parseOrderLines } from "./parse-lines";
 import type { CreateOrderState } from "./state";
 
 /**
@@ -19,17 +21,6 @@ export async function searchCustomersAction(
   query: string,
 ): Promise<Customer[]> {
   return searchCustomers(query);
-}
-
-/** Kyats are whole numbers — reject decimals rather than silently rounding. */
-function parseWholeNumber(raw: FormDataEntryValue | null) {
-  const text = String(raw ?? "")
-    .trim()
-    .replace(/,/g, "");
-  if (text === "") return null;
-  if (!/^\d+$/.test(text)) return null;
-  const n = Number.parseInt(text, 10);
-  return Number.isSafeInteger(n) ? n : null;
 }
 
 function parseId(raw: FormDataEntryValue | null) {
@@ -69,51 +60,8 @@ export async function createOrderAction(
   if (!Object.hasOwn(PAYMENT_METHOD, payment))
     errors.payment = "Pick a payment method.";
 
-  // ── Order lines ──
-  // Parsed from parallel arrays. Never trust a client-sent total: it's
-  // recomputed from these on the server, in createOrder().
-  const names = formData.getAll("lineName").map((v) => String(v).trim());
-  const productIds = formData.getAll("lineProductId");
-  const prices = formData.getAll("lineUnitPrice");
-  const quantities = formData.getAll("lineQuantity");
-
-  const lines: NewOrderLine[] = [];
-  let lineError: string | undefined;
-
-  for (let i = 0; i < names.length; i += 1) {
-    const name = names[i];
-    const unitPrice = parseWholeNumber(prices[i] ?? null);
-    const quantity = parseWholeNumber(quantities[i] ?? null);
-
-    // A completely blank row is just an unused input, not a mistake.
-    const untouched = !name && unitPrice === null && (quantity ?? 1) === 1;
-    if (untouched) continue;
-
-    if (!name) {
-      lineError = `Line ${i + 1} needs an item name.`;
-      break;
-    }
-    if (unitPrice === null || unitPrice < 1) {
-      lineError = `Line ${i + 1} needs a unit price above 0.`;
-      break;
-    }
-    if (quantity === null || quantity < 1) {
-      lineError = `Line ${i + 1} needs a quantity of at least 1.`;
-      break;
-    }
-
-    lines.push({
-      productId: parseId(productIds[i] ?? null),
-      name,
-      unitPrice,
-      quantity,
-    });
-  }
-
-  if (!lineError && lines.length === 0) {
-    lineError = "Add at least one item.";
-  }
-  if (lineError) errors.lines = lineError;
+  const parsed = await parseOrderLines(formData, getProduct);
+  if (parsed.error) errors.lines = parsed.error;
 
   if (Object.keys(errors).length > 0) {
     return { errors, message: "Check the highlighted fields." };
@@ -127,7 +75,7 @@ export async function createOrderAction(
     address,
     paymentMethod: payment as PaymentMethod,
     notifyBySms,
-    lines,
+    lines: parsed.lines!,
   });
 
   revalidatePath("/user/order");
