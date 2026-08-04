@@ -32,11 +32,11 @@ const ORDER_NAV = [
   { label: "Dashboard", href: "/user/dashboard", icon: DashboardSquare01Icon },
   { label: "Orders", href: "/user/order", icon: Calendar03Icon },
   { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
+  { label: "Products", href: "/user/product", icon: Package02Icon },
 ] as const;
 
 const PLANNED_NAV = [
   { label: "Deliveries", icon: TruckDeliveryIcon },
-  { label: "Products", icon: Package02Icon },
   { label: "Reports", icon: ChartLineData01Icon },
 ] as const;
 

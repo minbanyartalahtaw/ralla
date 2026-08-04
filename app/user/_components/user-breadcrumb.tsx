@@ -22,6 +22,11 @@ const TRAILS = {
   "/user/order": [{ label: "Orders" }],
   "/user/order/new": [{ label: "Orders", href: "/user/order" }, { label: "New order" }],
   "/user/customer": [{ label: "Customers" }],
+  "/user/product": [{ label: "Products" }],
+  "/user/product/new": [
+    { label: "Products", href: "/user/product" },
+    { label: "New product" },
+  ],
   "/user/customer/new": [
     { label: "Customers", href: "/user/customer" },
     { label: "New customer" },
