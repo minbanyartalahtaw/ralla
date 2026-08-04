@@ -76,16 +76,18 @@ export default async function OrdersPage() {
             </Button>
           </div>
         ) : (
-          <Table className="min-w-[900px]">
+          <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow className="bg-muted hover:bg-muted">
                 <TableHead className={th}>Order</TableHead>
                 <TableHead className={th}>Customer</TableHead>
+                <TableHead className={th}>Phone</TableHead>
+                <TableHead className={th}>City</TableHead>
                 <TableHead className={th}>Items</TableHead>
                 <TableHead className={`${th} text-right`}>Total</TableHead>
                 <TableHead className={th}>Payment</TableHead>
                 <TableHead className={th}>Delivery</TableHead>
-                <TableHead className={th}>Placed</TableHead>
+                <TableHead className={th}>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -96,11 +98,12 @@ export default async function OrdersPage() {
                       {o.code}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{o.customerName}</div>
-                    <div className="numeric text-[11px] text-muted-foreground">
-                      {o.phone} · {o.city}
-                    </div>
+                  <TableCell className="font-medium">{o.customerName}</TableCell>
+                  <TableCell className="numeric text-muted-foreground">
+                    {o.phone}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {o.city}
                   </TableCell>
                   <TableCell className="max-w-[240px]">
                     <div

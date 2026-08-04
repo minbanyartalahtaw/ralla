@@ -114,12 +114,19 @@
   /* ── Delivery / order status — RALLA-specific, no shadcn equivalent ───────
      Deliberately OUTSIDE the berry hue family (337–347°) so a status can
      never be mistaken for brand chrome. Always pair the color with a label. */
-  --pending: #92400e;
-  --pending-soft: #fef3c7;
+  /* Red. Deliberately the same red as --destructive: a true red is the only
+     hue that reads as "red" without colliding with the berry brand (337–347°),
+     and the lighter reds fail AA on a tinted background. Status chips are soft
+     pills with a dot; destructive UI is a solid button with a warning icon, so
+     the two stay distinguishable by form rather than by hue. */
+  --pending: #b91c1c;
+  --pending-soft: #fee2e2;
   --packing: #6b21a8;
   --packing-soft: #f3e8ff;
-  --shipped: #1e40af;
-  --shipped-soft: #dbeafe;
+  /* Yellow. The pale background carries the "yellow" reading; the text and dot
+     have to be this dark to clear 4.5:1 on it. */
+  --shipped: #b45309;
+  --shipped-soft: #fef3c7;
   --delivered: #166534;
   --delivered-soft: #dcfce7;
   --cancelled: var(--sand-600);
@@ -170,12 +177,12 @@
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: var(--ralla-300);
 
-  --pending: #fcd34d;
-  --pending-soft: #3a2a06;
+  --pending: #f87171;
+  --pending-soft: #3d1113;
   --packing: #d8b4fe;
   --packing-soft: #2e1065;
-  --shipped: #93c5fd;
-  --shipped-soft: #10254d;
+  --shipped: #fcd34d;
+  --shipped-soft: #3a2a06;
   --delivered: #86efac;
   --delivered-soft: #0a2e18;
   --cancelled: #9c7c86;

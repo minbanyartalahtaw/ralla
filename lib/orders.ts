@@ -98,22 +98,36 @@ export function formatKyat(amount: number) {
  */
 export const TIME_ZONE = "Asia/Yangon";
 
+/**
+ * ISO-style `2026-08-04`, in Yangon time.
+ *
+ * `en-CA` is the locale that natively formats as YYYY-MM-DD, so this stays a
+ * real localized format rather than hand-built string slicing — which is what
+ * would reintroduce the UTC bug.
+ */
 export function formatDate(value: Date) {
-  return value.toLocaleDateString("en-GB", {
+  return value.toLocaleDateString("en-CA", {
     timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
     day: "2-digit",
-    month: "short",
   });
 }
 
+/** `2026-08-04 17:20`, in Yangon time. 24-hour, to match the date's shape. */
 export function formatDateTime(value: Date) {
-  return value.toLocaleString("en-GB", {
-    timeZone: TIME_ZONE,
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return value
+    .toLocaleString("en-CA", {
+      timeZone: TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+    // en-CA joins date and time with a comma; a space reads better in a table.
+    .replace(", ", " ");
 }
 
 /** Line totals must reconcile with the order total — this is the one formula. */

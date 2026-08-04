@@ -55,6 +55,12 @@ npm run dev     # dev server (Turbopack)
 npm run build   # production build
 npm run start   # serve the production build
 npm run lint    # eslint
+
+npm run db:up      # start Postgres in Docker
+npm run db:migrate # apply migrations (hangs after applying — Ctrl+C is safe,
+                   #   then run `npx prisma generate` separately)
+npm run db:seed    # reset to the development fixtures
+npm run db:studio  # browse the data
 ```
 
 No test runner is set up yet.
@@ -63,15 +69,18 @@ No test runner is set up yet.
 
 ```
 app/
-  layout.tsx      # fonts, no-flash dark-mode script, html/body shell
-  page.tsx        # theme & component reference — NOT the real dashboard
-  globals.css     # Tailwind import + all theme tokens
-components/ui/    # shadcn components (generated — edit, don't hand-write)
-lib/utils.ts      # cn() — clsx + tailwind-merge
+  page.tsx            # theme & component reference — NOT the real dashboard
+  globals.css         # all theme tokens
+  user/               # the admin app; /user redirects to /user/dashboard
+    layout.tsx        # sidebar + breadcrumb shell
+    dashboard/ order/ customer/
+components/ui/        # shadcn components (generated — regenerate, don't hand-write)
+lib/                  # domain (orders, customers) + *-store.ts persistence
+prisma/               # schema, migrations, seed
+generated/prisma/     # Prisma client — gitignored, made by `prisma generate`
 ```
 
-The real order screens are yet to be built. `app/page.tsx` is a static style guide;
-move it to `/styleguide` or delete it once real routes exist.
+`app/page.tsx` is still the static style guide; move it to `/styleguide` or delete it.
 
 Prefer colocating route-specific components inside their route folder; promote to a
 shared `components/` directory only once something is used by two or more routes.
@@ -98,8 +107,14 @@ All of it lives in `app/globals.css`. Rules that matter:
   borders and chart series only. `#450920` on it is fine at 4.6:1.
 - **Primary is berry, destructive is true red (`#b91c1c`, hue 0°)** and always ships
   with a warning icon, so "cancel order" can never be misread as the primary action.
-- **Delivery-status colors sit outside the berry hue family** on purpose (amber /
-  purple / blue / green), and every one is paired with a text label — never hue alone.
+- **Delivery status is a traffic light**: pending red, packing purple, shipped
+  yellow, delivered green, cancelled grey. Every one is paired with a text label —
+  never hue alone. All ten light/dark pairings clear AA (4.5:1) on their tint.
+- **Pending red is the same red as `--destructive`.** A true red is the only hue
+  that reads as red without colliding with the berry brand, and lighter reds fail
+  AA on a tinted background. They stay distinguishable by *form*: a status is a
+  soft pill with a dot, destructive UI is a solid button with a warning icon.
+  Don't add more red UI without checking it can't be mistaken for either.
 - Order and delivery statuses live in one shared union type. Never hand-type the
   string literals at a call site.
 - Keep text at WCAG AA (4.5:1 body). The contrast numbers are recorded in the
@@ -129,11 +144,17 @@ fill a new order, not the source of truth for a past one.
 
 New orders always start `pending`; the create form doesn't get to choose the status.
 
-Storage is `lib/order-store.ts` and `lib/customer-store.ts` — **in-memory arrays, not
-a database**. Data is lost on restart and isn't shared between serverless instances.
-Both files exist so the flows are testable before a database is picked; keep the
-exported function signatures and swap the bodies. Nothing else in the app touches
-storage.
+Order codes are `RL-260804TXI` — RL, the **Yangon** date as YYMMDD, then three random
+letters, from `generateOrderCode()`. 26³ = 17,576 codes a day makes same-day
+collisions realistic, so the unique index is the guarantee and `createOrder()` retries.
+Customer codes stay a plain `RLC-` sequence; they carry no date.
+
+An order's `total` is computed from its line items in `createOrder()`, never accepted
+from the client, so a stored total can't disagree with what it's made of. Line `name`
+and `unitPrice` are snapshots too — a price rise must not rewrite last month's revenue.
+
+Storage is Postgres via Prisma. `lib/*-store.ts` are the only modules that touch it;
+everything else goes through them. Run `npm run db:up` then `npm run db:migrate`.
 
 ## Conventions
 
