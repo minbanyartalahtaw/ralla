@@ -1,0 +1,38 @@
+# Local development database.
+#
+#   docker compose up -d     start Postgres
+#   docker compose down      stop it (data survives)
+#   docker compose down -v   stop it and DELETE all data
+#
+# Credentials here are development-only and intentionally committed so the
+# stack runs with no setup. Never reuse them for anything deployed.
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: ralla-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ralla
+      POSTGRES_PASSWORD: ralla_dev_only
+      POSTGRES_DB: ralla
+      # Myanmar time, so timestamps in psql read the way staff expect.
+      TZ: Asia/Yangon
+      PGTZ: Asia/Yangon
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ wants the mount one level up from `data`, so pg_upgrade
+      # can work across a single mount point. Mounting .../data directly makes
+      # the container refuse to start.
+      - ralla-db-data:/var/lib/postgresql
+    healthcheck:
+      # `prisma migrate` fails against a Postgres that is up but not yet
+      # accepting connections, so wait for readiness rather than the container.
+      test: ["CMD-SHELL", "pg_isready -U ralla -d ralla"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  ralla-db-data:
