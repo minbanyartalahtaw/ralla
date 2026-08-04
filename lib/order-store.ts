@@ -4,6 +4,7 @@
  * Server-only — never import this from a Client Component.
  */
 
+import { generateOrderCode } from "@/lib/order-code";
 import { prisma } from "@/lib/prisma";
 import {
   itemsTotal,
@@ -11,6 +12,22 @@ import {
   type OrderWithItems,
   type PaymentMethod,
 } from "@/lib/orders";
+
+/** Postgres unique-constraint violation, as surfaced by Prisma. */
+function isDuplicateCode(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
+
+/**
+ * Order codes end in three random letters, so two orders on the same day can
+ * collide (26³ = 17,576 combinations). The unique index is the real guarantee;
+ * this just picks fresh letters and tries again.
+ */
+const CODE_ATTEMPTS = 5;
 
 export type NewOrderLine = {
   /** Null for an ad-hoc line that isn't in the product catalog. */
@@ -61,32 +78,45 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
 
   const total = itemsTotal(input.lines);
 
-  return prisma.order.create({
-    data: {
-      customerId: input.customerId,
-      customerName: input.customerName,
-      phone: input.phone,
-      city: input.city,
-      address: input.address,
-      total,
-      paymentMethod: input.paymentMethod,
-      // New orders always start pending; the caller doesn't get to pick.
-      status: "pending",
-      notifyBySms: input.notifyBySms,
-      items: {
-        create: input.lines.map((line) => ({
-          productId: line.productId,
-          name: line.name,
-          unitPrice: line.unitPrice,
-          quantity: line.quantity,
-        })),
-      },
-      statusEvents: {
-        create: [{ status: "pending", changedBy: "system" }],
-      },
-    },
-    include: { items: true },
-  });
+  for (let attempt = 1; attempt <= CODE_ATTEMPTS; attempt += 1) {
+    try {
+      return await prisma.order.create({
+        data: {
+          code: generateOrderCode(),
+          customerId: input.customerId,
+          customerName: input.customerName,
+          phone: input.phone,
+          city: input.city,
+          address: input.address,
+          total,
+          paymentMethod: input.paymentMethod,
+          // New orders always start pending; the caller doesn't get to pick.
+          status: "pending",
+          notifyBySms: input.notifyBySms,
+          items: {
+            create: input.lines.map((line) => ({
+              productId: line.productId,
+              name: line.name,
+              unitPrice: line.unitPrice,
+              quantity: line.quantity,
+            })),
+          },
+          statusEvents: {
+            create: [{ status: "pending", changedBy: "system" }],
+          },
+        },
+        include: { items: true },
+      });
+    } catch (error) {
+      if (isDuplicateCode(error) && attempt < CODE_ATTEMPTS) continue;
+      throw error;
+    }
+  }
+
+  // Unreachable: the loop either returns or throws.
+  throw new Error(
+    `Could not generate a unique order code after ${CODE_ATTEMPTS} attempts.`,
+  );
 }
 
 /** Records the change and appends to the order's history in one transaction. */

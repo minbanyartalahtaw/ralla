@@ -65,8 +65,13 @@ model Customer {
 }
 
 model Order {
-  id   Int    @id @default(autoincrement())
-  code String @unique @default(dbgenerated("('RL-' || nextval('order_code_seq'))"))
+  id Int @id @default(autoincrement())
+
+  /// `RL-260804TXI` — RL, the Yangon date as YYMMDD, then three random letters.
+  /// Supplied by generateOrderCode() rather than a sequence, because the code
+  /// carries the order date. The unique index is what actually guarantees
+  /// uniqueness; createOrder() retries on collision.
+  code String @unique
 
   /// Nullable: a walk-in can be typed in without a saved customer record.
   /// SetNull rather than Cascade — deleting a customer must not erase the

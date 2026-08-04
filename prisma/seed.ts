@@ -10,6 +10,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../generated/prisma/client";
+import { generateOrderCode } from "../lib/order-code";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -91,6 +92,7 @@ async function main() {
 
   await prisma.order.create({
     data: {
+      code: generateOrderCode(),
       customerId: thanda.id,
       customerName: thanda.name,
       phone: thanda.phone,
@@ -115,6 +117,7 @@ async function main() {
 
   await prisma.order.create({
     data: {
+      code: generateOrderCode(),
       customerId: khin.id,
       customerName: khin.name,
       phone: khin.phone,
