@@ -1,26 +1,276 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================================
+   RALLA — theme tokens
+
+   shadcn's semantic names (--background, --primary, --muted, --border…) are the
+   ONE vocabulary for the app. Every shadcn component reads them, so components
+   should use `bg-card`, `text-muted-foreground`, `border-border` and friends —
+   never a raw --ralla-* value.
+
+   The raw ramp below exists only to give those semantic tokens their values,
+   plus the delivery-status colors, which shadcn has no equivalent for.
+
+   Contrast against white (WCAG AA body text needs 4.5:1):
+     #450920  16.0:1  ✓ foreground, sidebar
+     #a53860   6.3:1  ✓ primary — safe with white text
+     #da627d   3.5:1  ✗ NEVER body text on white — fill / border / chart only
+     #ffa5ab   1.9:1    background only
+     #f9dbbd   1.3:1    background only
+   #450920 text is safe on all three lighter brand colors (4.6:1 – 12.1:1).
+
+   Dark mode is class-based (`.dark` on <html>), per shadcn. The inline script
+   in app/layout.tsx sets that class from localStorage or the OS preference.
+   ========================================================================== */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Brand ramp — the five chosen colors, plus derived steps ───────────── */
+  --ralla-25: #fff6f3;
+  --ralla-50: #f9dbbd; /* chosen — peach. Hue 30°, the outlier; warm surface */
+  --ralla-100: #ffa5ab; /* chosen */
+  --ralla-200: #f28f98; /* derived */
+  --ralla-300: #da627d; /* chosen — accent/fill, not text on white */
+  --ralla-400: #c44f6e; /* derived */
+  --ralla-500: #b8436a; /* derived */
+  --ralla-600: #a53860; /* chosen — primary action */
+  --ralla-700: #8d2f52; /* derived */
+  --ralla-800: #6a2340; /* derived */
+  --ralla-900: #450920; /* chosen — foreground, sidebar */
+
+  /* ── Warm neutrals, tinted toward --ralla-900 so greys never look cold ── */
+  --sand-50: #fbf8f9;
+  --sand-100: #f5eef0;
+  --sand-200: #eadde1;
+  --sand-300: #d8c6cc;
+  --sand-400: #b09aa2;
+  --sand-500: #82656e;
+  --sand-600: #5e454d;
+  --sand-700: #443036;
+  --sand-800: #2c1e23;
+  --sand-900: #1a1013;
+
+  /* ── shadcn semantic tokens ────────────────────────────────────────────── */
+  --background: var(--sand-50);
+  --foreground: var(--ralla-900);
+
+  --card: #ffffff;
+  --card-foreground: var(--ralla-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--ralla-900);
+
+  --primary: var(--ralla-600);
+  --primary-foreground: #ffffff;
+
+  --secondary: var(--sand-100);
+  --secondary-foreground: var(--ralla-900);
+
+  --muted: var(--sand-100);
+  --muted-foreground: var(--sand-500); /* 5.2:1 on --background */
+
+  /* shadcn uses --accent for hover surfaces, so it stays a whisper of brand */
+  --accent: var(--ralla-25);
+  --accent-foreground: var(--ralla-900);
+
+  /* True red (hue 0°) so a destructive action never reads as brand berry */
+  --destructive: #b91c1c;
+
+  --border: var(--sand-200);
+  --input: var(--sand-200);
+  --ring: var(--ralla-400);
+
+  /* Charts lead with the brand pair, then move well outside the berry hue
+     family so more than two series stay tellable apart. */
+  --chart-1: var(--ralla-600);
+  --chart-2: var(--ralla-300);
+  --chart-3: #d97706;
+  --chart-4: #2563eb;
+  --chart-5: #15803d;
+
+  /* The sidebar is the dark berry slab that anchors the brand */
+  --sidebar: var(--ralla-900);
+  --sidebar-foreground: var(--ralla-100);
+  --sidebar-primary: var(--ralla-300);
+  --sidebar-primary-foreground: var(--ralla-900);
+  --sidebar-accent: oklch(1 0 0 / 10%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: var(--ralla-300);
+
+  --radius: 0.5rem;
+
+  /* ── TikTok brand ─────────────────────────────────────────────────────────
+     Third-party colors, used ONLY to badge the TikTok-sourced fields on the
+     customer form. Never reuse these for RALLA chrome — they are not ours.
+     Both neons fail AA as text (#fe2c55 is 3.6:1 on white, #25f4ee is 1.6:1),
+     so they are fill and accent only, always on the black slab. */
+  --tiktok-ink: #000000;
+  --tiktok-cyan: #25f4ee;
+  --tiktok-red: #fe2c55;
+
+  /* ── Delivery / order status — RALLA-specific, no shadcn equivalent ───────
+     Deliberately OUTSIDE the berry hue family (337–347°) so a status can
+     never be mistaken for brand chrome. Always pair the color with a label. */
+  --pending: #92400e;
+  --pending-soft: #fef3c7;
+  --packing: #6b21a8;
+  --packing-soft: #f3e8ff;
+  --shipped: #1e40af;
+  --shipped-soft: #dbeafe;
+  --delivered: #166534;
+  --delivered-soft: #dcfce7;
+  --cancelled: var(--sand-600);
+  --cancelled-soft: var(--sand-100);
+}
+
+.dark {
+  --background: #150609;
+  --foreground: #f7e9ec;
+
+  --card: #200a11;
+  --card-foreground: #f7e9ec;
+  --popover: #200a11;
+  --popover-foreground: #f7e9ec;
+
+  /* Lifted a step — on a dark surface, deepening a color reads as disabled.
+     #b8436a still clears 4.7:1 with white text. */
+  --primary: var(--ralla-500);
+  --primary-foreground: #ffffff;
+
+  --secondary: #2c0f19;
+  --secondary-foreground: #f7e9ec;
+
+  --muted: #2c0f19;
+  --muted-foreground: #c3a4ad;
+
+  --accent: #2f0f1a;
+  --accent-foreground: #f7e9ec;
+
+  --destructive: #f87171;
+
+  --border: #3a1620;
+  --input: #43202a;
+  --ring: var(--ralla-200);
+
+  --chart-1: var(--ralla-400);
+  --chart-2: var(--ralla-100);
+  --chart-3: #fbbf24;
+  --chart-4: #60a5fa;
+  --chart-5: #4ade80;
+
+  --sidebar: #200a11;
+  --sidebar-foreground: var(--ralla-100);
+  --sidebar-primary: var(--ralla-300);
+  --sidebar-primary-foreground: var(--ralla-900);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: var(--ralla-300);
+
+  --pending: #fcd34d;
+  --pending-soft: #3a2a06;
+  --packing: #d8b4fe;
+  --packing-soft: #2e1065;
+  --shipped: #93c5fd;
+  --shipped-soft: #10254d;
+  --delivered: #86efac;
+  --delivered-soft: #0a2e18;
+  --cancelled: #9c7c86;
+  --cancelled-soft: #2c0f19;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* TikTok brand — badge only, see the note in :root */
+  --color-tiktok-ink: var(--tiktok-ink);
+  --color-tiktok-cyan: var(--tiktok-cyan);
+  --color-tiktok-red: var(--tiktok-red);
+
+  /* Delivery status */
+  --color-pending: var(--pending);
+  --color-pending-soft: var(--pending-soft);
+  --color-packing: var(--packing);
+  --color-packing-soft: var(--packing-soft);
+  --color-shipped: var(--shipped);
+  --color-shipped-soft: var(--shipped-soft);
+  --color-delivered: var(--delivered);
+  --color-delivered-soft: var(--delivered-soft);
+  --color-cancelled: var(--cancelled);
+  --color-cancelled-soft: var(--cancelled-soft);
+
+  /* Raw ramp — for swatches and the rare one-off brand surface */
+  --color-ralla-25: var(--ralla-25);
+  --color-ralla-50: var(--ralla-50);
+  --color-ralla-100: var(--ralla-100);
+  --color-ralla-200: var(--ralla-200);
+  --color-ralla-300: var(--ralla-300);
+  --color-ralla-400: var(--ralla-400);
+  --color-ralla-500: var(--ralla-500);
+  --color-ralla-600: var(--ralla-600);
+  --color-ralla-700: var(--ralla-700);
+  --color-ralla-800: var(--ralla-800);
+  --color-ralla-900: var(--ralla-900);
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
   --font-mono: var(--font-geist-mono);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Tabular figures keep money and counts aligned down a table column. */
+.numeric {
+  font-variant-numeric: tabular-nums;
 }
