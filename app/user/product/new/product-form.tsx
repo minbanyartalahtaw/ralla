@@ -150,7 +150,7 @@ export function ProductForm() {
             <Input
               id="name"
               name="name"
-              placeholder="Velvet Matte Lipstick"
+              placeholder=""
               aria-invalid={!!errors.name}
               aria-describedby={errors.name ? "name-error" : undefined}
             />
@@ -166,7 +166,7 @@ export function ProductForm() {
                 id="price"
                 name="price"
                 inputMode="numeric"
-                placeholder="18500"
+                placeholder=""
                 className="numeric"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
@@ -185,15 +185,36 @@ export function ProductForm() {
             <FieldError id="price-error" message={errors.price} />
           </div>
 
+          <div>
+            <Label htmlFor="stock">Stock</Label>
+            <InputGroup
+              className={errors.stock ? "border-destructive" : undefined}
+            >
+              <InputGroupInput
+                id="stock"
+                name="stock"
+                inputMode="numeric"
+                placeholder="0"
+                className="numeric"
+                aria-invalid={!!errors.stock}
+                aria-describedby={errors.stock ? "stock-error" : undefined}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>units</InputGroupText>
+              </InputGroupAddon>
+            </InputGroup>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Leave blank if the stock hasn&apos;t arrived yet.
+            </p>
+            <FieldError id="stock-error" message={errors.stock} />
+          </div>
+
           <div className="sm:col-span-2">
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <Checkbox name="isActive" defaultChecked />
               Available to sell — shows in the picker on a new order
             </label>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Existing orders keep their line items either way; this only
-              controls what can be added to a new one.
-            </p>
+
           </div>
         </div>
       </fieldset>

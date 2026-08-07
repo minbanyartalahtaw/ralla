@@ -13,13 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listOrders } from "@/lib/order-store";
+
+import { StatusSelect } from "./status-select";
 import {
-  DELIVERY_STATUS,
   PAYMENT_METHOD,
   formatDate,
   formatKyat,
   itemCount,
-  type DeliveryStatus,
 } from "@/lib/orders";
 
 export const metadata: Metadata = {
@@ -28,24 +28,15 @@ export const metadata: Metadata = {
 
 const th = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
-function StatusChip({ status }: { status: DeliveryStatus }) {
-  const s = DELIVERY_STATUS[status];
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[11px] font-medium ${s.chip}`}
-    >
-      <span className={`size-1.5 rounded-full ${s.dot}`} aria-hidden />
-      {s.label}
-    </span>
-  );
-}
-
 export default async function OrdersPage() {
   const orders = await listOrders();
 
   return (
     <div>
-      <div className="flex items-center justify-end gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
+          Orders
+        </h1>
         <Button nativeButton={false} render={<Link href="/user/order/new" />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           New order
@@ -86,8 +77,8 @@ export default async function OrdersPage() {
                 <TableHead className={th}>Items</TableHead>
                 <TableHead className={`${th} text-right`}>Total</TableHead>
                 <TableHead className={th}>Payment</TableHead>
-                <TableHead className={th}>Delivery</TableHead>
                 <TableHead className={th}>Date</TableHead>
+                <TableHead className={th}>Delivery</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -130,12 +121,13 @@ export default async function OrdersPage() {
                       {PAYMENT_METHOD[o.paymentMethod]}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <StatusChip status={o.status} />
-                  </TableCell>
-                  <TableCell className="numeric text-muted-foreground">
+                                    <TableCell className="numeric text-muted-foreground">
                     {formatDate(o.placedAt)}
                   </TableCell>
+                  <TableCell>
+                    <StatusSelect orderId={o.id} status={o.status} />
+                  </TableCell>
+
                 </TableRow>
               ))}
             </TableBody>

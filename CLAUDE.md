@@ -153,6 +153,20 @@ An order's `total` is computed from its line items in `createOrder()`, never acc
 from the client, so a stored total can't disagree with what it's made of. Line `name`
 and `unitPrice` are snapshots too — a price rise must not rewrite last month's revenue.
 
+`Product.stock` is the exception to the snapshot rule: it is *not* copied onto an
+order line, because "how many are left" is only ever a question about now. It is
+edited in place from the products table as an absolute count — staff count the shelf
+and type what they see, so a delta would have to agree with a number nobody read. A
+check constraint keeps it ≥ 0.
+
+`createOrder()` takes the ordered units off the shelf in the same transaction that
+writes the order, with one `UPDATE … SET stock = GREATEST(stock - n, 0)` per product
+so concurrent saves can't both subtract from the same starting number. Overselling is
+**allowed**: the order form warns when a line exceeds stock but never blocks, because
+the count is maintained by hand and staff know what is actually on the shelf. Stock
+floors at zero rather than going negative. Nothing puts stock *back* yet — cancelling
+an order does not restore it.
+
 Storage is Postgres via Prisma. `lib/*-store.ts` are the only modules that touch it;
 everything else goes through them. Run `npm run db:up` then `npm run db:migrate`.
 

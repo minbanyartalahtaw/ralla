@@ -15,7 +15,8 @@ import {
 import { listProducts } from "@/lib/product-store";
 import { formatDate, formatKyat } from "@/lib/orders";
 
-import { toggleProductActiveAction } from "./actions";
+import { ActiveSelect } from "./active-select";
+import { StockCell } from "./stock-cell";
 
 export const metadata: Metadata = {
   title: "Products — RALLA",
@@ -25,14 +26,13 @@ const th = "text-[11px] font-semibold tracking-wide text-muted-foreground upperc
 
 export default async function ProductsPage() {
   const products = await listProducts();
-  const activeCount = products.filter((p) => p.isActive).length;
 
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <p className="numeric text-xs text-muted-foreground">
-          {activeCount} active of {products.length}
-        </p>
+        <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
+          Product
+        </h1>
         <Button nativeButton={false} render={<Link href="/user/product/new" />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           New product
@@ -59,17 +59,15 @@ export default async function ProductsPage() {
             </Button>
           </div>
         ) : (
-          <Table className="min-w-[760px]">
+          <Table className="min-w-[860px]">
             <TableHeader>
               <TableRow className="bg-muted hover:bg-muted">
                 <TableHead className={th}>SKU</TableHead>
+                <TableHead className={`${th}`}>Stock</TableHead>
                 <TableHead className={th}>Name</TableHead>
                 <TableHead className={`${th} text-right`}>Price</TableHead>
-                <TableHead className={th}>Status</TableHead>
                 <TableHead className={th}>Added</TableHead>
-                <TableHead className={th}>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead className={th}>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -80,43 +78,19 @@ export default async function ProductsPage() {
                       {p.sku}
                     </span>
                   </TableCell>
+                                    <TableCell>
+                    <StockCell productId={p.id} stock={p.stock} />
+                  </TableCell>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="numeric text-right font-medium">
                     {formatKyat(p.price)}
                   </TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[11px] font-medium ${
-                        p.isActive
-                          ? "bg-delivered-soft text-delivered"
-                          : "bg-cancelled-soft text-cancelled"
-                      }`}
-                    >
-                      <span
-                        className={`size-1.5 rounded-full ${
-                          p.isActive ? "bg-delivered" : "bg-cancelled"
-                        }`}
-                        aria-hidden
-                      />
-                      {p.isActive ? "Active" : "Discontinued"}
-                    </span>
-                  </TableCell>
+
                   <TableCell className="numeric text-muted-foreground">
                     {formatDate(p.createdAt)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {/* A plain form, so this works without JavaScript. */}
-                    <form action={toggleProductActiveAction}>
-                      <input type="hidden" name="id" value={p.id} />
-                      <input
-                        type="hidden"
-                        name="isActive"
-                        value={String(!p.isActive)}
-                      />
-                      <Button type="submit" variant="ghost" size="xs">
-                        {p.isActive ? "Discontinue" : "Reactivate"}
-                      </Button>
-                    </form>
+                  <TableCell>
+                    <ActiveSelect productId={p.id} isActive={p.isActive} />
                   </TableCell>
                 </TableRow>
               ))}

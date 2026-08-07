@@ -8,6 +8,7 @@ import {
   ChartLineData01Icon,
   DashboardSquare01Icon,
   Package02Icon,
+  PlusSignIcon,
   Settings01Icon,
   TruckDeliveryIcon,
   UserGroupIcon,
@@ -22,15 +23,27 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-/** Routes that exist. Everything else is listed but disabled, not faked. */
+/**
+ * Routes that exist. Everything else is listed but disabled, not faked.
+ *
+ * `newHref` adds a "+" shortcut beside the item, for the one route staff open
+ * far more often to create than to browse.
+ */
 const ORDER_NAV = [
   { label: "Dashboard", href: "/user/dashboard", icon: DashboardSquare01Icon },
-  { label: "Orders", href: "/user/order", icon: Calendar03Icon },
+  {
+    label: "Orders",
+    href: "/user/order",
+    icon: Calendar03Icon,
+    newHref: "/user/order/new",
+    newLabel: "New order",
+  },
   { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
   { label: "Products", href: "/user/product", icon: Package02Icon },
 ] as const;
@@ -88,6 +101,15 @@ export function UserSidebar() {
                     <HugeiconsIcon icon={item.icon} strokeWidth={1.5} />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
+                  {"newHref" in item ? (
+                    <SidebarMenuAction
+                      title={item.newLabel}
+                      render={<Link href={item.newHref} />}
+                    >
+                      <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+                      <span className="sr-only">{item.newLabel}</span>
+                    </SidebarMenuAction>
+                  ) : null}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

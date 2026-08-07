@@ -27,7 +27,10 @@ export default async function CustomersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-end gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
+          Customers
+        </h1>
         <Button nativeButton={false} render={<Link href="/user/customer/new" />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           New customer

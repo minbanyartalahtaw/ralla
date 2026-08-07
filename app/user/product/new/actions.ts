@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createProduct, findProductBySku } from "@/lib/product-store";
-import { isValidSku, normalizeSku } from "@/lib/products";
+import { isValidSku, normalizeSku, parseStock } from "@/lib/products";
 import type { CreateProductState } from "./state";
 
 export async function createProductAction(
@@ -18,6 +18,7 @@ export async function createProductAction(
   const priceRaw = String(formData.get("price") ?? "")
     .trim()
     .replace(/,/g, "");
+  const stockRaw = String(formData.get("stock") ?? "").trim();
   const isActive = formData.get("isActive") === "on";
 
   const errors: Record<string, string> = {};
@@ -46,6 +47,13 @@ export async function createProductAction(
     }
   }
 
+  // A blank stock field means "none counted yet", not an error — a product can
+  // be catalogued before the delivery arrives.
+  const stock = stockRaw === "" ? 0 : parseStock(stockRaw);
+  if (stock === null) {
+    errors.stock = "Whole units only, 0 or more.";
+  }
+
   if (Object.keys(errors).length > 0) {
     return { errors, message: "Check the highlighted fields." };
   }
@@ -54,6 +62,7 @@ export async function createProductAction(
     sku,
     name,
     price: price!,
+    stock: stock!,
     isActive,
   });
 

@@ -31,12 +31,14 @@ async function main() {
 
   const products = await Promise.all(
     [
-      { sku: "LIP-VM-01", name: "Velvet Matte Lipstick", price: 18500 },
-      { sku: "LIP-LN-01", name: "Lip Liner", price: 11500 },
-      { sku: "SRM-GLW-30", name: "Glow Serum 30ml", price: 32000 },
-      { sku: "FND-CSH-21", name: "Cushion Foundation #21", price: 46000 },
-      { sku: "PWD-SET-01", name: "Setting Powder", price: 30000 },
-      { sku: "SUN-SPF50", name: "Sunscreen SPF50", price: 20500 },
+      // One product is deliberately out of stock, so the empty state on the
+      // products table is visible without editing anything first.
+      { sku: "LIP-VM-01", name: "Velvet Matte Lipstick", price: 18500, stock: 42 },
+      { sku: "LIP-LN-01", name: "Lip Liner", price: 11500, stock: 8 },
+      { sku: "SRM-GLW-30", name: "Glow Serum 30ml", price: 32000, stock: 15 },
+      { sku: "FND-CSH-21", name: "Cushion Foundation #21", price: 46000, stock: 0 },
+      { sku: "PWD-SET-01", name: "Setting Powder", price: 30000, stock: 23 },
+      { sku: "SUN-SPF50", name: "Sunscreen SPF50", price: 20500, stock: 60 },
     ].map((data) => prisma.product.create({ data })),
   );
 

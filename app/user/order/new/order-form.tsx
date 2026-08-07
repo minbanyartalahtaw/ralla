@@ -67,7 +67,14 @@ export function OrderForm({ products }: { products: Product[] }) {
   // The Combobox holds its value in React state, so a hidden input carries it
   // into the FormData the Server Action receives.
   const [city, setCity] = React.useState<string | null>(null);
-  const [lines, setLines] = React.useState<Line[]>(() => [blankLine()]);
+  // The key sequence lives here so it survives Fast Refresh and starts from
+  // the same place on the server and the client.
+  const [lines, setLines] = React.useState<Line[]>(() => [blankLine(0)]);
+  const nextLineSeq = React.useRef(1);
+
+  function addLine() {
+    setLines((current) => [...current, blankLine(nextLineSeq.current++)]);
+  }
 
   // Controlled so the TikTok search can fill them. Still editable afterwards —
   // what gets saved is whatever is in the fields, not the customer record, so
@@ -284,6 +291,7 @@ export function OrderForm({ products }: { products: Product[] }) {
               products={products}
               lines={lines}
               onChange={setLines}
+              onAdd={addLine}
               error={errors.lines}
             />
           </div>

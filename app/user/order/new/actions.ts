@@ -80,6 +80,10 @@ export async function createOrderAction(
 
   revalidatePath("/user/order");
   revalidatePath("/user/dashboard");
+  // The order took its units off the shelf, so both the products table and this
+  // form's picker are now showing stale counts.
+  revalidatePath("/user/product");
+  revalidatePath("/user/order/new");
 
   return { errors: {}, createdId: order.code };
 }

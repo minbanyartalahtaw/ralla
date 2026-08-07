@@ -49,3 +49,17 @@ export async function setProductActive(
 ): Promise<Product> {
   return prisma.product.update({ where: { id }, data: { isActive } });
 }
+
+/**
+ * Sets the units on hand to an absolute count.
+ *
+ * Absolute rather than a delta because this is a stock *correction* — staff
+ * count the shelf and type what they see. A delta would need to agree with a
+ * number they never looked at.
+ */
+export async function setProductStock(
+  id: number,
+  stock: number,
+): Promise<Product> {
+  return prisma.product.update({ where: { id }, data: { stock } });
+}
