@@ -1,26 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { PlusSignIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
+import {
+  ArrowRight01Icon,
+  PlusSignIcon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { listCustomers } from "@/lib/customer-store";
-import { formatTiktokHandle } from "@/lib/customers";
+import { formatTiktokHandle, initials } from "@/lib/customers";
 import { formatDate } from "@/lib/orders";
 
 export const metadata: Metadata = {
   title: "Customers — RALLA",
 };
-
-const th = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
 export default async function CustomersPage() {
   const customers = await listCustomers();
@@ -58,73 +52,68 @@ export default async function CustomersPage() {
             </Button>
           </div>
         ) : (
-          <Table className="min-w-[1020px]">
-            <TableHeader>
-              <TableRow className="bg-muted hover:bg-muted">
-                <TableHead className={th}>Customer ID</TableHead>
-                <TableHead className={th}>TikTok</TableHead>
-                <TableHead className={th}>Name</TableHead>
-                <TableHead className={th}>Mobile</TableHead>
-                <TableHead className={th}>City</TableHead>
-                <TableHead className={th}>Address</TableHead>
-                <TableHead className={th}>Added</TableHead>
-                <TableHead className={th}>Note</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((c) => (
-                <TableRow key={c.id}>
-                  {/* The permanent identity. A TikTok handle can be renamed;
-                      this can't, so it leads the row. */}
-                  <TableCell>
-                    <span className="numeric font-mono text-[11px] font-medium">
-                      {c.code}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-mono text-[11px] text-muted-foreground">
+          // Rows, not a table. Nine columns needed 1100px, so on a phone the
+          // list was clipped after the third one with nothing to scroll — and
+          // address and note, the two widest columns, are only ever read on the
+          // detail page anyway.
+          <ul className="divide-y">
+            {customers.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/user/customer/${c.code}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-accent"
+                >
+                  <span
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
+                    aria-hidden
+                  >
+                    {initials(c.name)}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">{c.name}</p>
+                    <p className="truncate font-mono text-[11px] text-muted-foreground">
                       {formatTiktokHandle(c.tiktokUsername)}
-                    </div>
-                    {c.tiktokName ? (
-                      <div className="truncate text-[11px]" title={c.tiktokName}>
-                        {c.tiktokName}
-                      </div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="numeric text-muted-foreground">
-                    {c.phone}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {c.city}
-                  </TableCell>
-                  <TableCell className="max-w-[260px]">
-                    <div
-                      className="truncate text-muted-foreground"
-                      title={c.address}
-                    >
-                      {c.address}
-                    </div>
-                  </TableCell>
-                  <TableCell className="numeric text-muted-foreground">
-                    {formatDate(c.createdAt)}
-                  </TableCell>
-                  <TableCell className="max-w-[240px]">
-                    {c.note ? (
-                      <div
-                        className="truncate text-muted-foreground"
-                        title={c.note}
-                      >
-                        {c.note}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground/50">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      <span className="mx-1.5 text-muted-foreground/50">·</span>
+                      <span className="numeric">{c.code}</span>
+                    </p>
+                    {/* Folded into the name block on a phone; its own column
+                        from `sm`, where there is room to line them up. */}
+                    <p className="truncate text-[11px] text-muted-foreground sm:hidden">
+                      {c.city}
+                      <span className="mx-1.5 text-muted-foreground/50">·</span>
+                      <span className="numeric">{c.phone}</span>
+                    </p>
+                  </div>
+
+                  <div className="hidden shrink-0 text-right sm:block">
+                    <p className="text-[11px] text-muted-foreground">
+                      {c.city}
+                    </p>
+                    <p className="numeric text-[11px] text-muted-foreground">
+                      {c.phone}
+                    </p>
+                  </div>
+
+                  {/* No "Added" label: a YYYY-MM-DD date needs no naming, and
+                      repeating the word down every row was the only thing on
+                      the list that read as leftover table chrome. */}
+                  <div className="hidden shrink-0 text-right lg:block">
+                    <p className="numeric text-[11px] text-muted-foreground">
+                      {formatDate(c.createdAt)}
+                    </p>
+                  </div>
+
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    size={14}
+                    strokeWidth={2}
+                    className="shrink-0 text-muted-foreground"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

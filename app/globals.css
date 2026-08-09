@@ -281,3 +281,68 @@
 .numeric {
   font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================================
+   Print — the invoice sheet, and nothing else
+
+   An order's page marks its sheet `data-print-sheet`; printing that page has to
+   yield the invoice alone, without the sidebar, top bar or buttons around it.
+   Hiding by visibility rather than display keeps the sheet's ancestors laid out,
+   so it can be pulled to the top-left corner of the page.
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  [data-print-sheet],
+  [data-print-sheet] * {
+    visibility: visible;
+  }
+
+  [data-print-sheet] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    /* Browsers drop background colors when printing; the letterhead slab and
+       the status chip are meaningless without theirs. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Paper is white whatever the screen was set to, so a sheet printed in dark
+     mode has to borrow the light values back. Only the tokens the sheet uses —
+     the raw ramps below them are theme-independent already. */
+  .dark {
+    --background: #ffffff;
+    --foreground: var(--ralla-900);
+    --card: #ffffff;
+    --card-foreground: var(--ralla-900);
+    --primary: var(--ralla-600);
+    --muted: var(--sand-100);
+    --muted-foreground: var(--sand-500);
+    --border: var(--sand-200);
+    --destructive: #b91c1c;
+    --sidebar: var(--ralla-900);
+    --sidebar-foreground: var(--ralla-100);
+    --pending: #b91c1c;
+    --pending-soft: #fee2e2;
+    --packing: #6b21a8;
+    --packing-soft: #f3e8ff;
+    --shipped: #b45309;
+    --shipped-soft: #fef3c7;
+    --delivered: #166534;
+    --delivered-soft: #dcfce7;
+    --cancelled: var(--sand-600);
+    --cancelled-soft: var(--sand-100);
+  }
+}

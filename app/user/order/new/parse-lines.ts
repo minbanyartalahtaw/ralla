@@ -46,6 +46,8 @@ export async function parseOrderLines(
   const quantities = formData.getAll("lineQuantity");
 
   const lines: NewOrderLine[] = [];
+  /** Units asked for per product, to check the sum against stock below. */
+  const ordered = new Map<number, { product: Product; quantity: number }>();
 
   for (let i = 0; i < productIds.length; i += 1) {
     const productId = parseId(productIds[i]);
@@ -77,10 +79,27 @@ export async function parseOrderLines(
       unitPrice,
       quantity,
     });
+
+    const running = ordered.get(product.id);
+    if (running) running.quantity += quantity;
+    else ordered.set(product.id, { product, quantity });
   }
 
   if (lines.length === 0) {
     return { error: "Add at least one product." };
+  }
+
+  // Against the total per product, not each line: the same product can sit on
+  // two rows, and each on its own can fit while the sum doesn't.
+  for (const { product, quantity } of ordered.values()) {
+    if (quantity > product.stock) {
+      return {
+        error:
+          product.stock === 0
+            ? `${product.name} is out of stock.`
+            : `Only ${product.stock} of ${product.name} in stock, ordering ${quantity}.`,
+      };
+    }
   }
 
   return { lines };

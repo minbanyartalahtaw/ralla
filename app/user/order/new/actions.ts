@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { searchCustomers } from "@/lib/customer-store";
 import type { Customer } from "@/lib/customers";
-import { createOrder } from "@/lib/order-store";
+import { createOrder, OutOfStockError } from "@/lib/order-store";
 import { getProduct } from "@/lib/product-store";
 import { CITIES, PAYMENT_METHOD, type PaymentMethod } from "@/lib/orders";
 import { parseOrderLines } from "./parse-lines";
@@ -67,16 +67,30 @@ export async function createOrderAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
-  const order = await createOrder({
-    customerId,
-    customerName: customer,
-    phone,
-    city,
-    address,
-    paymentMethod: payment as PaymentMethod,
-    notifyBySms,
-    lines: parsed.lines!,
-  });
+  let order;
+  try {
+    order = await createOrder({
+      customerId,
+      customerName: customer,
+      phone,
+      city,
+      address,
+      paymentMethod: payment as PaymentMethod,
+      notifyBySms,
+      lines: parsed.lines!,
+    });
+  } catch (error) {
+    // The stock check above ran against the counts this request read; someone
+    // else's order can land in between. The transaction is the authority, so
+    // its refusal comes back as a form error rather than a crash.
+    if (error instanceof OutOfStockError) {
+      return {
+        errors: { lines: error.message },
+        message: "Not enough stock to save this order.",
+      };
+    }
+    throw error;
+  }
 
   revalidatePath("/user/order");
   revalidatePath("/user/dashboard");

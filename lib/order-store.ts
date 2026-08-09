@@ -9,9 +9,30 @@ import { prisma } from "@/lib/prisma";
 import {
   itemsTotal,
   type DeliveryStatus,
+  type OrderDetail,
   type OrderWithItems,
   type PaymentMethod,
 } from "@/lib/orders";
+
+/**
+ * A line asked for more units than the shelf has. Thrown from inside the write
+ * transaction, so the order is rolled back rather than half-saved; the caller
+ * turns it into a form error.
+ */
+export class OutOfStockError extends Error {
+  constructor(
+    readonly productName: string,
+    readonly stock: number,
+    readonly wanted: number,
+  ) {
+    super(
+      stock === 0
+        ? `${productName} is out of stock.`
+        : `Only ${stock} of ${productName} in stock, ordering ${wanted}.`,
+    );
+    this.name = "OutOfStockError";
+  }
+}
 
 /** Postgres unique-constraint violation, as surfaced by Prisma. */
 function isDuplicateCode(error: unknown): boolean {
@@ -57,10 +78,55 @@ export async function listOrders(): Promise<OrderWithItems[]> {
   });
 }
 
+/**
+ * One customer's orders, newest first.
+ *
+ * Matched on `customerId` rather than the name or phone snapshot sitting on the
+ * order: those are frozen on purpose, so someone who renamed or moved would
+ * drop out of their own history if the snapshot were the join key.
+ *
+ * Orders placed for a walk-in — `customerId` null — belong to nobody and are
+ * correctly absent here.
+ */
+export async function listOrdersByCustomer(
+  customerId: number,
+): Promise<OrderWithItems[]> {
+  return prisma.order.findMany({
+    where: { customerId },
+    include: { items: true },
+    orderBy: { placedAt: "desc" },
+  });
+}
+
 export async function getOrder(id: number): Promise<OrderWithItems | null> {
   return prisma.order.findUnique({
     where: { id },
     include: { items: true },
+  });
+}
+
+/**
+ * Lookup by the human-facing `RL-` code, which is what the detail URL carries.
+ * Same reasoning as getCustomerByCode(): the code is on screen and immutable,
+ * `id` is an internal surrogate nobody ever sees.
+ *
+ * Uppercased first — codes are stored uppercase, but a URL comes back lowercased
+ * often enough that a case-exact match would 404 on a link that is otherwise
+ * correct.
+ *
+ * The status history comes along because it is the point of the detail page:
+ * the list already shows where an order *is*, only this page says how it got
+ * there. Oldest first, so it reads as a timeline.
+ */
+export async function getOrderByCode(
+  code: string,
+): Promise<OrderDetail | null> {
+  return prisma.order.findUnique({
+    where: { code: code.trim().toUpperCase() },
+    include: {
+      items: true,
+      statusEvents: { orderBy: { changedAt: "asc" } },
+    },
   });
 }
 
@@ -92,6 +158,10 @@ function stockMovements(lines: NewOrderLine[]): Map<number, number> {
  * transaction: stock that dropped only after a separate later call would be
  * wrong for exactly as long as that call took to arrive, and not at all if it
  * failed.
+ *
+ * Throws OutOfStockError if any line asks for more than is on the shelf. The
+ * form and the action both check first, but only this check is safe against two
+ * staff saving the last unit at the same moment.
  */
 export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
   if (input.lines.length === 0) {
@@ -137,20 +207,34 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
           // by Postgres from the row it is locking, so two staff saving at the
           // same moment can't both subtract from the same starting number.
           //
-          // GREATEST floors the result at zero. Selling more than the counted
-          // stock is allowed — the form warns but doesn't block, because the
-          // count is maintained by hand and staff know what is actually on the
-          // shelf. A negative shelf count would be a worse lie than zero, and
-          // the check constraint forbids it either way.
+          // `stock >= quantity` in the WHERE clause is what actually forbids
+          // overselling. Checking before the write would leave a gap in which
+          // the other save lands; here the condition is evaluated against the
+          // locked row, so exactly one of the two can win and the loser gets
+          // zero rows back.
           //
           // updated_at is set by hand because @updatedAt only fires on writes
           // that go through Prisma's query builder.
-          await tx.$executeRaw`
+          const updated = await tx.$executeRaw`
             UPDATE "products"
-            SET "stock" = GREATEST("stock" - ${quantity}, 0),
+            SET "stock" = "stock" - ${quantity},
                 "updated_at" = now()
-            WHERE "id" = ${productId}
+            WHERE "id" = ${productId} AND "stock" >= ${quantity}
           `;
+
+          if (updated === 0) {
+            // Either the shelf is short or the product was deleted since the
+            // form loaded. Read it back to say which; the throw rolls the whole
+            // order back either way.
+            const product = await tx.product.findUnique({
+              where: { id: productId },
+              select: { name: true, stock: true },
+            });
+            if (!product) {
+              throw new Error("A product on this order no longer exists.");
+            }
+            throw new OutOfStockError(product.name, product.stock, quantity);
+          }
         }
 
         return order;

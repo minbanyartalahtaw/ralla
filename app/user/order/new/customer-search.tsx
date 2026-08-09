@@ -74,7 +74,9 @@ export function CustomerSearch({
     >
       <ComboboxInput
         id="customerSearch"
-        placeholder="Search TikTok username, name or handle"
+        // Short enough to survive a 390px screen — the longer wording was
+        // clipped mid-word, which reads as a broken field.
+        placeholder="Handle or name"
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}

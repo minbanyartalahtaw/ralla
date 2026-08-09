@@ -2,11 +2,7 @@
 
 import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Alert02Icon,
-  Delete02Icon,
-  PlusSignIcon,
-} from "@hugeicons/core-free-icons";
+import { Delete02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -75,6 +71,35 @@ export function linesTotal(lines: Line[]): number {
 }
 
 /**
+ * Units asked for per product.
+ *
+ * Summed rather than read per line: the same product can sit on two rows, and
+ * each on its own can fit on the shelf while the sum doesn't.
+ */
+function orderedByProduct(lines: Line[]): Map<number, number> {
+  const totals = new Map<number, number>();
+  for (const line of lines) {
+    if (line.productId === null) continue;
+    const quantity = toWholeNumber(line.quantity);
+    if (quantity === null || quantity < 1) continue;
+    totals.set(line.productId, (totals.get(line.productId) ?? 0) + quantity);
+  }
+  return totals;
+}
+
+/**
+ * Products the order asks for more of than the shelf holds. An order that would
+ * oversell can't be saved, so the form asks this to decide whether the save
+ * button is live — the action and the write transaction check it again.
+ */
+export function stockShortfalls(lines: Line[], products: Product[]) {
+  const totals = orderedByProduct(lines);
+  return products
+    .filter((p) => (totals.get(p.id) ?? 0) > p.stock)
+    .map((p) => ({ name: p.name, stock: p.stock, ordered: totals.get(p.id)! }));
+}
+
+/**
  * Editable order lines.
  *
  * Every line is a catalog product — there is no free-text item, so a typo can
@@ -123,18 +148,20 @@ export function OrderLines({
   const chosen = (line: Line) =>
     line.productId === null ? null : (byId.get(line.productId) ?? null);
 
+  const ordered = React.useMemo(() => orderedByProduct(lines), [lines]);
+
   /**
-   * How far past the counted stock this line goes, or null when it fits.
-   *
-   * A warning, not an error: the count is maintained by hand, so staff may well
-   * know a restock is on the way. Saving is never blocked, and the order takes
-   * the stock down to zero rather than negative.
+   * How far past the counted stock this line's product goes, or null when it
+   * fits. Blocking, not advisory — an order can't be saved for units that
+   * aren't there.
    */
-  function overStock(line: Line): { stock: number; quantity: number } | null {
+  function overStock(line: Line): { stock: number; ordered: number } | null {
     const product = chosen(line);
-    const quantity = toWholeNumber(line.quantity);
-    if (!product || quantity === null) return null;
-    return quantity > product.stock ? { stock: product.stock, quantity } : null;
+    if (!product) return null;
+    const wanted = ordered.get(product.id) ?? 0;
+    return wanted > product.stock
+      ? { stock: product.stock, ordered: wanted }
+      : null;
   }
 
   // One row per line at every width — stacking the four fields into a card on
@@ -145,8 +172,12 @@ export function OrderLines({
   // actually needs (2–3 digits, 5–6 digits, one icon) and every pixel left
   // goes to the product name, which is the only field that can't be guessed
   // from a glance at its value.
+  //
+  // On a wide screen the product column is capped rather than left as 1fr: a
+  // 430px-wide empty search box beside a 48px quantity looked unbalanced, and
+  // no product name needs that much room.
   const columns =
-    "grid grid-cols-[minmax(0,1fr)_2.75rem_5rem_1.5rem] gap-1.5 sm:grid-cols-[1fr_5rem_8rem_2rem] sm:gap-2";
+    "grid grid-cols-[minmax(0,1fr)_2.75rem_5rem_1.5rem] gap-1.5 sm:grid-cols-[minmax(0,26rem)_6rem_10rem_2rem] sm:gap-3";
 
   return (
     <div>
@@ -165,7 +196,7 @@ export function OrderLines({
         {lines.map((line, index) => {
           const short = overStock(line);
           return (
-            <li key={line.key} className={`${columns} items-start`}>
+            <li key={line.key} className={`${columns} items-center`}>
               <Combobox
                 items={products}
                 value={chosen(line)}
@@ -180,23 +211,28 @@ export function OrderLines({
                   // Short enough not to be clipped in the narrow mobile column.
                   placeholder="Search"
                 />
-                <ComboboxContent>
+                {/* The popup defaults to the width of the field it hangs off,
+                    and on a phone that field is a ~150px column — product names
+                    came out as "Suns…". Widened to the screen there; from `sm`
+                    the column is roomy enough to go back to matching it. */}
+                <ComboboxContent className="w-[min(22rem,calc(100vw-2.5rem))] sm:w-(--anchor-width)">
                   <ComboboxEmpty>
                     No product matches. Add it on the Products page first.
                   </ComboboxEmpty>
                   <ComboboxList>
-                    {/* Name, then its price, with stock pushed to the far edge —
-                      the counts line up down the list instead of drifting with
-                      the name lengths. Sold-out products stay selectable: the
-                      count is kept by hand, so the line warns instead of
-                      blocking an order staff know they can fill. */}
+                    {/* Name, with stock pushed to the far edge so the counts
+                      line up down the list instead of drifting with the name
+                      lengths. The price isn't listed — picking the product
+                      fills it into the Unit price field, which is where it can
+                      actually be read and changed.
+
+                      A sold-out product can still be picked, so the reason the
+                      order won't save is stated on the line rather than hidden
+                      behind an item that refuses to click. */}
                     {products.map((p) => (
                       <ComboboxItem key={p.id} value={p} className="pr-8">
                         <span className="flex min-w-0 flex-1 items-baseline gap-3">
                           <span className="truncate">{p.name}</span>
-                          <span className="numeric shrink-0 text-[11px] text-muted-foreground">
-                            {formatKyat(p.price)}
-                          </span>
                           <span
                             className={`ml-auto shrink-0 text-[11px] ${
                               p.stock === 0
@@ -254,14 +290,11 @@ export function OrderLines({
               </Button>
 
               {short ? (
-                <p className="col-span-full flex items-center gap-1 px-1 text-[11px] text-shipped">
-                  <HugeiconsIcon
-                    icon={Alert02Icon}
-                    size={12}
-                    strokeWidth={2}
-                    className="shrink-0"
-                  />
-                  Only {short.stock} in stock, ordering {short.quantity}.
+                <p className="col-span-full px-1 text-[11px] text-destructive">
+                  {short.stock === 0
+                    ? "Out of stock"
+                    : `Only ${short.stock} in stock`}
+                  , ordering {short.ordered}.
                 </p>
               ) : null}
             </li>
@@ -283,10 +316,7 @@ export function OrderLines({
       </div>
 
       {error ? (
-        <p className="mt-2 flex items-center gap-1 text-[11px] text-destructive">
-          <HugeiconsIcon icon={Alert02Icon} size={12} strokeWidth={2} />
-          {error}
-        </p>
+        <p className="mt-2 text-[11px] text-destructive">{error}</p>
       ) : null}
     </div>
   );

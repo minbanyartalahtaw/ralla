@@ -9,16 +9,26 @@
  */
 
 import { DeliveryStatus, PaymentMethod } from "@/generated/prisma/enums";
-import type { OrderModel, OrderItemModel } from "@/generated/prisma/models";
+import type {
+  OrderModel,
+  OrderItemModel,
+  OrderStatusEventModel,
+} from "@/generated/prisma/models";
 
 export { DeliveryStatus, PaymentMethod };
 
 /** Row shapes Prisma returns. Aliased so app code reads naturally. */
 export type Order = OrderModel;
 export type OrderItem = OrderItemModel;
+export type OrderStatusEvent = OrderStatusEventModel;
 
 /** An order with its lines, which is how the UI always wants it. */
 export type OrderWithItems = Order & { items: OrderItem[] };
+
+/** Everything one order's page shows — the lines plus how it got here. */
+export type OrderDetail = OrderWithItems & {
+  statusEvents: OrderStatusEvent[];
+};
 
 type StatusMeta = {
   label: string;

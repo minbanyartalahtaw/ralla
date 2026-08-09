@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { PlusSignIcon, TruckDeliveryIcon } from "@hugeicons/core-free-icons";
+import {
+  ArrowRight01Icon,
+  PlusSignIcon,
+  TruckDeliveryIcon,
+} from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +71,7 @@ export default async function OrdersPage() {
             </Button>
           </div>
         ) : (
-          <Table className="min-w-[1100px]">
+          <Table className="min-w-[1240px]">
             <TableHeader>
               <TableRow className="bg-muted hover:bg-muted">
                 <TableHead className={th}>Order</TableHead>
@@ -79,6 +83,9 @@ export default async function OrdersPage() {
                 <TableHead className={th}>Payment</TableHead>
                 <TableHead className={th}>Date</TableHead>
                 <TableHead className={th}>Delivery</TableHead>
+                <TableHead className={th}>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,7 +134,23 @@ export default async function OrdersPage() {
                   <TableCell>
                     <StatusSelect orderId={o.id} status={o.status} />
                   </TableCell>
-
+                  <TableCell className="text-right">
+                    {/* Addressed by `code`, not `id`: the code is what's on
+                        screen, so a copied link reads as the row it came from. */}
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      nativeButton={false}
+                      render={<Link href={`/user/order/${o.code}`} />}
+                      aria-label={`View details for order ${o.code}`}
+                    >
+                      View details
+                      <HugeiconsIcon
+                        icon={ArrowRight01Icon}
+                        data-icon="inline-end"
+                      />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

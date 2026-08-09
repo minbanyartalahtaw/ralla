@@ -16,6 +16,22 @@ export async function getCustomer(id: number): Promise<Customer | null> {
 }
 
 /**
+ * Lookup by the human-facing `RLC-` code, which is what the detail URL carries.
+ * The code is immutable and already on screen, so a copied link stays readable
+ * and keeps pointing at the same person — neither `id` (never displayed) nor
+ * the TikTok handle (renameable) can promise both.
+ *
+ * Uppercased first: codes are stored uppercase, but a URL comes back lowercased
+ * often enough — hand-typed, or flattened by a chat client — that a case-exact
+ * match would 404 on a link that is otherwise correct.
+ */
+export async function getCustomerByCode(code: string): Promise<Customer | null> {
+  return prisma.customer.findUnique({
+    where: { code: code.trim().toUpperCase() },
+  });
+}
+
+/**
  * The lookup behind the new-order autofill. `handle` must already be
  * normalized — call normalizeTiktokUsername() first.
  */

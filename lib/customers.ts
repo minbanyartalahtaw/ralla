@@ -46,3 +46,25 @@ export function isValidTiktokUsername(handle: string): boolean {
 export function formatTiktokHandle(handle: string): string {
   return `@${handle}`;
 }
+
+/**
+ * Up to two initials, for the avatar that stands in for a customer.
+ *
+ * Staff recognise a customer by face and handle, and a record has neither — a
+ * monogram at least gives the row something to be recognised by, and the same
+ * one every time. Uses Intl.Segmenter so a Burmese name yields whole
+ * characters: those scripts combine several code points into one glyph, and
+ * slicing by code unit would print half a letter.
+ */
+export function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  if (words.length === 0) return "?";
+
+  const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  return words
+    .map((word) => {
+      const [first] = segmenter.segment(word);
+      return (first?.segment ?? "").toUpperCase();
+    })
+    .join("");
+}

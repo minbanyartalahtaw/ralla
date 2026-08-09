@@ -132,6 +132,13 @@ TikTok, so the handle is how staff *find* a customer — but its owner can renam
 any time. It is a mutable, unique lookup index; anything that needs to reference a
 customer stores `id`.
 
+**Detail URLs address a record by its `code`, not its `id`.** `/user/customer/RLC-1015`
+is the row staff are already looking at, so a pasted link reads as the record it came
+from; `id` is an internal surrogate that is never displayed, and the TikTok handle can
+be renamed out from under a saved link. Codes are matched case-insensitively — they are
+stored uppercase, but URLs come back lowercased often enough that an exact match would
+404 on a link that is otherwise correct.
+
 Handles are stored normalized (lowercase, no `@`). `normalizeTiktokUsername()` in
 `lib/customers.ts` accepts `@name`, `name`, or a pasted profile URL and reduces all
 three to the same handle. Always normalize before comparing or storing.
@@ -160,12 +167,18 @@ and type what they see, so a delta would have to agree with a number nobody read
 check constraint keeps it ≥ 0.
 
 `createOrder()` takes the ordered units off the shelf in the same transaction that
-writes the order, with one `UPDATE … SET stock = GREATEST(stock - n, 0)` per product
-so concurrent saves can't both subtract from the same starting number. Overselling is
-**allowed**: the order form warns when a line exceeds stock but never blocks, because
-the count is maintained by hand and staff know what is actually on the shelf. Stock
-floors at zero rather than going negative. Nothing puts stock *back* yet — cancelling
-an order does not restore it.
+writes the order, with one `UPDATE … SET stock = stock - n WHERE id = ? AND stock >= n`
+per product so concurrent saves can't both subtract from the same starting number.
+
+**Overselling is refused.** An order can't be saved for units that aren't on the
+shelf. Three layers say so, and only the last one is the guarantee: the form disables
+Save and marks the line, `parseOrderLines()` re-checks against live counts for a
+readable message, and the `stock >= n` condition on the UPDATE decides it against the
+locked row. Zero rows updated means someone else got there first, so the transaction
+throws `OutOfStockError` and rolls the order back; the action turns that into a form
+error rather than a crash. Stock is checked against the **total per product**, since
+the same product can sit on two lines. Nothing puts stock *back* yet — cancelling an
+order does not restore it.
 
 Storage is Postgres via Prisma. `lib/*-store.ts` are the only modules that touch it;
 everything else goes through them. Run `npm run db:up` then `npm run db:migrate`.
