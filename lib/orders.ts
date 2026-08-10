@@ -30,6 +30,26 @@ export type OrderDetail = OrderWithItems & {
   statusEvents: OrderStatusEvent[];
 };
 
+/**
+ * Dashboard aggregates. Declared here rather than in the store because the
+ * chart components are Client Components, and `*-store.ts` is server-only.
+ */
+export type RevenueDay = {
+  /** `YYYY-MM-DD`, the Yangon calendar day. */
+  day: string;
+  revenue: number;
+  orders: number;
+};
+
+/** One bar on a dashboard breakdown — a named category and its magnitude. */
+export type LabelledCount = {
+  /** Printed on the axis. Keep it short — the axis gutter is ~110px. */
+  label: string;
+  value: number;
+  /** Longer name, revealed when the bar is clicked. Omit if there's no more. */
+  detail?: string;
+};
+
 type StatusMeta = {
   label: string;
   description: string;

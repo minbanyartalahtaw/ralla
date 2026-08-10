@@ -7,11 +7,14 @@
 import { generateOrderCode } from "@/lib/order-code";
 import { prisma } from "@/lib/prisma";
 import {
+  formatDate,
   itemsTotal,
   type DeliveryStatus,
   type OrderDetail,
   type OrderWithItems,
+  type LabelledCount,
   type PaymentMethod,
+  type RevenueDay,
 } from "@/lib/orders";
 
 /**
@@ -96,6 +99,147 @@ export async function listOrdersByCustomer(
     include: { items: true },
     orderBy: { placedAt: "desc" },
   });
+}
+
+/** A day label (`YYYY-MM-DD`) as a UTC-midnight anchor, for exact arithmetic. */
+function dayAnchor(label: string) {
+  return new Date(`${label}T00:00:00Z`);
+}
+
+/** Never plot fewer days than this — a two-point line isn't a trend. */
+const MIN_TREND_DAYS = 7;
+
+/**
+ * Revenue and order count per day, oldest day first.
+ *
+ * Bucketed by the **Yangon** calendar day, not the UTC one: an order placed at
+ * 01:00 local is still 18:30 the previous day in UTC, so grouping on the raw
+ * timestamp would file it under yesterday. formatDate() already names the day
+ * correctly, so the grouping key comes from it rather than from SQL — this also
+ * keeps the query inside Prisma, where `date_trunc … AT TIME ZONE` can't go.
+ *
+ * The window ends today and reaches back to the first order, capped at
+ * `maxDays`. A fixed 30 days on a shop that opened last week is 25 days of flat
+ * zero pretending to be a trend — the chart should show the history that
+ * exists, and grow into the full window as the shop does.
+ *
+ * Days inside the window with no orders ARE returned, as zero: skipping them
+ * would slope the line straight through a quiet week and overstate it.
+ *
+ * Cancelled orders are excluded — they were voided before dispatch, so no money
+ * moved.
+ */
+export async function revenueByDay(maxDays = 30): Promise<RevenueDay[]> {
+  const notCancelled = { status: { not: "cancelled" } } as const;
+
+  const first = await prisma.order.findFirst({
+    where: notCancelled,
+    orderBy: { placedAt: "asc" },
+    select: { placedAt: true },
+  });
+
+  // Anchor on today's Yangon date, then step back in whole UTC days. Anchoring
+  // at UTC midnight makes the arithmetic exact — these are date labels, never
+  // instants, and Myanmar has no DST to shift them.
+  const anchor = dayAnchor(formatDate(new Date()));
+
+  let days = maxDays;
+  if (first) {
+    const span =
+      Math.round(
+        (anchor.getTime() - dayAnchor(formatDate(first.placedAt)).getTime()) /
+          86_400_000,
+      ) + 1;
+    days = Math.min(maxDays, Math.max(MIN_TREND_DAYS, span));
+  }
+
+  const labels: string[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(anchor);
+    d.setUTCDate(d.getUTCDate() - i);
+    labels.push(d.toISOString().slice(0, 10));
+  }
+
+  // Yangon is UTC+06:30, so the window opens up to 7h before the first label's
+  // UTC midnight. Anything that over-reaches lands in a bucket we don't keep.
+  const since = new Date(dayAnchor(labels[0]).getTime() - 7 * 60 * 60 * 1000);
+
+  const orders = await prisma.order.findMany({
+    where: { ...notCancelled, placedAt: { gte: since } },
+    select: { placedAt: true, total: true },
+  });
+
+  const buckets = new Map(labels.map((day) => [day, { revenue: 0, orders: 0 }]));
+  for (const order of orders) {
+    const bucket = buckets.get(formatDate(order.placedAt));
+    if (!bucket) continue;
+    bucket.revenue += order.total;
+    bucket.orders += 1;
+  }
+
+  return labels.map((day) => ({ day, ...buckets.get(day)! }));
+}
+
+/**
+ * The best sellers, by units rather than by revenue — this answers "what is
+ * leaving the shelf", which is the question the products page can't answer.
+ *
+ * Labelled by SKU, with the product name carried alongside for the chart to
+ * reveal on click: cosmetic names are long enough to wrap an axis gutter onto
+ * three lines, and the SKU is both short and unique.
+ *
+ * Grouped on `productId` rather than the line's snapshot name, so a product
+ * renamed mid-life stays one bar instead of splitting into two. Cancelled
+ * orders never shipped, so their lines don't count.
+ */
+export async function topProductsByUnits(limit = 6): Promise<LabelledCount[]> {
+  const rows = await prisma.orderItem.groupBy({
+    by: ["productId"],
+    where: { order: { status: { not: "cancelled" } } },
+    _sum: { quantity: true },
+    orderBy: { _sum: { quantity: "desc" } },
+    take: limit,
+  });
+
+  const ids = rows
+    .map((row) => row.productId)
+    .filter((id): id is number => id !== null);
+
+  const products = await prisma.product.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, sku: true, name: true },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+
+  return rows.map((row) => {
+    // productId is null once a product is deleted. Those units really were
+    // sold, so the bar stays rather than quietly dropping out of the totals —
+    // it just has no SKU or name left to show.
+    const product = row.productId === null ? null : byId.get(row.productId);
+    return {
+      label: product?.sku ?? "—",
+      detail: product?.name ?? "Deleted product",
+      value: row._sum.quantity ?? 0,
+    };
+  });
+}
+
+/**
+ * Orders per destination city, busiest first — the shape of a delivery run.
+ *
+ * Counted on the order's own `city` snapshot rather than the customer's current
+ * one: this is where the parcel actually went, and someone who has since moved
+ * must not retroactively empty out the city they used to live in.
+ */
+export async function ordersByCity(): Promise<LabelledCount[]> {
+  const rows = await prisma.order.groupBy({
+    by: ["city"],
+    where: { status: { not: "cancelled" } },
+    _count: { _all: true },
+    orderBy: { _count: { city: "desc" } },
+  });
+
+  return rows.map((row) => ({ label: row.city, value: row._count._all }));
 }
 
 export async function getOrder(id: number): Promise<OrderWithItems | null> {

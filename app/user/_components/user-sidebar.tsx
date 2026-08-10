@@ -5,12 +5,10 @@ import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Calendar03Icon,
-  ChartLineData01Icon,
   DashboardSquare01Icon,
   Package02Icon,
   PlusSignIcon,
   Settings01Icon,
-  TruckDeliveryIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 
@@ -30,8 +28,6 @@ import {
 } from "@/components/ui/sidebar";
 
 /**
- * Routes that exist. Everything else is listed but disabled, not faked.
- *
  * `newHref` adds a "+" shortcut beside the item, for the one route staff open
  * far more often to create than to browse.
  */
@@ -44,13 +40,8 @@ const ORDER_NAV = [
     newHref: "/user/order/new",
     newLabel: "New order",
   },
-  { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
   { label: "Products", href: "/user/product", icon: Package02Icon },
-] as const;
-
-const PLANNED_NAV = [
-  { label: "Deliveries", icon: TruckDeliveryIcon },
-  { label: "Reports", icon: ChartLineData01Icon },
+  { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
 ] as const;
 
 export function UserSidebar() {
@@ -110,22 +101,6 @@ export function UserSidebar() {
                       <span className="sr-only">{item.newLabel}</span>
                     </SidebarMenuAction>
                   ) : null}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Not built yet</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {PLANNED_NAV.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton disabled tooltip={`${item.label} — not built yet`}>
-                    <HugeiconsIcon icon={item.icon} strokeWidth={1.5} />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
