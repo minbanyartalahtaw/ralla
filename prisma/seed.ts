@@ -55,7 +55,7 @@ async function main() {
       tiktokName: "Thanda Beauty 🌸",
       name: "မသန္တာဝင်း",
       phone: "09 770 112 233",
-      city: "Yangon",
+      city: "ရန်ကုန်တိုင်းဒေသကြီး",
       address: "No. 12, Bogyoke Road, Latha",
       note: "Repeat buyer — prefers evening delivery.",
     },
@@ -67,7 +67,7 @@ async function main() {
       tiktokName: "Khin Myo Thu",
       name: "ခင်မျိုးသူ",
       phone: "09 442 887 100",
-      city: "Mandalay",
+      city: "မန္တလေးတိုင်းဒေသကြီး",
       address: "78th Street, between 32 and 33",
     },
   });

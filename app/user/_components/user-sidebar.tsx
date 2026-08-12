@@ -6,12 +6,22 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Calendar03Icon,
   DashboardSquare01Icon,
+  Logout01Icon,
   Package02Icon,
   PlusSignIcon,
-  Settings01Icon,
+  UnfoldMoreIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 
+import { signOutAction } from "@/app/login/actions";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +36,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+
+import { ThemeToggleItem } from "./theme-toggle-item";
 
 /**
  * `newHref` adds a "+" shortcut beside the item, for the one route staff open
@@ -44,7 +56,7 @@ const ORDER_NAV = [
   { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
 ] as const;
 
-export function UserSidebar() {
+export function UserSidebar({ username }: { username: string }) {
   const pathname = usePathname();
 
   return (
@@ -57,16 +69,17 @@ export function UserSidebar() {
               tooltip="RALLA"
               render={<Link href="/user/dashboard" />}
             >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground">
-                R
+              {/* Square and legible at any width, so it doubles as the icon
+                  once the rail collapses — no separate fallback needed. The
+                  emoji carries its own colour, so no badge behind it. */}
+              <span
+                className="flex size-7 shrink-0 items-center justify-center text-[18px]"
+                aria-hidden
+              >
+                🌸
               </span>
-              <span className="grid text-left leading-tight">
-                <span className="text-sm font-semibold tracking-[0.18em]">
-                  RALLA
-                </span>
-                <span className="text-[10px] text-sidebar-foreground/70">
-                  Order admin
-                </span>
+              <span className="text-sm font-semibold tracking-[0.18em]">
+                RALLA
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -111,10 +124,57 @@ export function UserSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton disabled tooltip="Settings — not built yet">
-              <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
-              <span>Settings</span>
-            </SidebarMenuButton>
+            {/* Signing out stays a form POST to the Server Action — that is the
+                one shape that can clear an HttpOnly cookie. It sits out here
+                rather than inside the menu because the menu content is
+                portalled to <body>, so a wrapping form wouldn't contain the
+                button; the `form` attribute below reaches it by id instead. */}
+            <form id="sign-out" action={signOutAction} className="hidden" />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <SidebarMenuButton size="lg" tooltip={username}>
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground uppercase">
+                      {username.slice(0, 1)}
+                    </span>
+                    <span className="grid flex-1 text-left leading-tight">
+                      <span className="truncate text-xs font-medium">
+                        {username}
+                      </span>
+                    </span>
+                    <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={1.5} />
+                  </SidebarMenuButton>
+                }
+              />
+
+              {/* Opens upward — the trigger is pinned to the bottom of the
+                  rail, so there is no room below it. */}
+              <DropdownMenuContent
+                side="top"
+                align="end"
+          
+              >
+
+
+                <ThemeToggleItem />
+
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  variant="destructive"
+                  // Menu items render a div by default. Saying so keeps Base UI
+                  // from bolting its own Enter/Space handling onto an element
+                  // that already submits on both.
+                  nativeButton
+                  render={<button type="submit" form="sign-out" />}
+                >
+                  <HugeiconsIcon icon={Logout01Icon} strokeWidth={1.5} />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

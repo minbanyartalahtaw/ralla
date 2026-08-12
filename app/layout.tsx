@@ -26,6 +26,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
+        {/* Sets `.dark` before the first paint. It has to be an inline,
+            render-blocking script: any React effect runs after the browser has
+            already painted, so a staff member on dark mode would get a white
+            flash on every cold load. An explicit choice in localStorage wins;
+            with none stored, the OS preference decides. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.theme;if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}`,
+          }}
+        />
       </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

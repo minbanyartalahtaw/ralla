@@ -3,27 +3,45 @@ import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowRight01Icon,
+  Cancel01Icon,
   PlusSignIcon,
+  Search01Icon,
   TruckDeliveryIcon,
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
+import {
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { listOrders } from "@/lib/order-store";
-
-import { StatusSelect } from "./status-select";
 import {
+  countOrdersByStatus,
+  listOrdersPage,
+  normalizeOrderQuery,
+} from "@/lib/order-store";
+
+import { ordersHref } from "./orders-href";
+import { Pager } from "./pager";
+import { SelectableBody } from "./selectable-body";
+import { StatusSelect } from "./status-select";
+import { StatusTabs } from "./status-tabs";
+import {
+  DELIVERY_STATUS,
   PAYMENT_METHOD,
   formatDate,
   formatKyat,
   itemCount,
+  parseDeliveryStatus,
 } from "@/lib/orders";
 
 export const metadata: Metadata = {
@@ -32,45 +50,162 @@ export const metadata: Metadata = {
 
 const th = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
-export default async function OrdersPage() {
-  const orders = await listOrders();
+export default async function OrdersPage({
+  searchParams,
+}: PageProps<"/user/order">) {
+  const { q, status: rawStatus, page: rawPage } = await searchParams;
+  const query = typeof q === "string" ? q : "";
+  const status = parseDeliveryStatus(
+    typeof rawStatus === "string" ? rawStatus : undefined,
+  );
+  // A junk page — `?page=abc`, `?page=-3` — reads as the first page rather than
+  // an error. listOrdersPage() clamps the upper end against the real count.
+  const requestedPage = Number.parseInt(String(rawPage ?? "1"), 10);
+
+  // The counts deliberately ignore `status` — they describe what each tab
+  // holds, so they have to be taken across all of them under the same search.
+  const [{ orders, page, pageCount }, counts] = await Promise.all([
+    listOrdersPage({ query, status }, requestedPage),
+    countOrdersByStatus({ query }),
+  ]);
+
+  // Three kinds of empty, and they need different words: a shop with no orders
+  // at all wants "add one", a search that found nothing wants "clear it", and
+  // an empty status tab is usually good news.
+  const searched = normalizeOrderQuery(query);
+  const searching = searched !== "";
+  const filtering = status !== undefined;
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
-          Orders
-        </h1>
+      {/* The visible heading is gone — the breadcrumb already names the page.
+          This keeps the document with a top-level heading for screen readers
+          and the tab order, which a page with no h1 at all would lose. */}
+      <h1 className="sr-only">Orders</h1>
+
+      <div className="flex items-center gap-3">
+        {/* A plain GET form, so the search lands in the URL: a filtered list
+            can be bookmarked, shared, and reloaded, and back returns to the
+            previous query. No client JavaScript is involved. */}
+        <form method="get" className="min-w-0 flex-1">
+          <InputGroup className="max-w-xs">
+            <InputGroupAddon>
+              {/* Every code starts `RL-`, so typing it is four keystrokes that
+                  never narrow anything. Shown, not typed — and
+                  normalizeOrderQuery() strips it back off a pasted code. */}
+              <InputGroupText className="numeric font-mono">RL-</InputGroupText>
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              name="q"
+              // Keyed on the query so a new one gets a new element. The field
+              // is uncontrolled, and Base UI reads `defaultValue` once when it
+              // mounts — on an RSC re-render (a status change on this page
+              // revalidates it) React would otherwise keep the same input and
+              // quietly hand it a default it has already passed the point of
+              // being able to use.
+              key={query}
+              defaultValue={query}
+              placeholder=""
+              aria-label="Search orders by order ID, without the RL- prefix"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              // The browser's own clear button only empties the field — it
+              // never submits, so the list stayed filtered against a box that
+              // looked empty. Hidden in favour of the link below, which
+              // actually goes somewhere.
+              className="numeric font-mono [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            <InputGroupAddon align="inline-end">
+              {searching ? (
+                <InputGroupButton
+                  size="icon-xs"
+                  variant="ghost"
+                  nativeButton={false}
+                  // Keeps the status tab you were on: clearing the search
+                  // narrows by one thing less, it doesn't reset everything.
+                  render={<Link href={ordersHref({ status })} />}
+                  aria-label="Clear search"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
+                </InputGroupButton>
+              ) : null}
+              <InputGroupButton type="submit" size="sm" variant="ghost">
+                <HugeiconsIcon icon={Search01Icon} strokeWidth={1.5} />
+                Search
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+          {/* Searching inside a status tab keeps you in it. Without this the
+              form would submit `q` alone and quietly drop back to All. */}
+          {status ? <input type="hidden" name="status" value={status} /> : null}
+        </form>
+
         <Button nativeButton={false} render={<Link href="/user/order/new" />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           New order
         </Button>
       </div>
 
-      <div className="mt-6 rounded-lg border bg-card">
+      <div className="mt-4">
+        <StatusTabs active={status} counts={counts} query={query} />
+      </div>
+
+      <div className="mt-4 rounded-lg border bg-card">
         {orders.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
             <span className="text-muted-foreground">
               <HugeiconsIcon
-                icon={TruckDeliveryIcon}
+                icon={searching ? Search01Icon : TruckDeliveryIcon}
                 size={32}
                 strokeWidth={1.5}
               />
             </span>
-            <p className="mt-3 text-xs font-medium">No orders yet</p>
-            <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-              Orders you save will appear here, newest first.
-            </p>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              className="mt-4"
-              render={<Link href="/user/order/new" />}
-            >
-              Add an order
-            </Button>
+            {searching ? (
+              <>
+                <p className="mt-3 text-xs font-medium">No order matches</p>
+                {/* Echoed back with the prefix that wasn't typed, so it reads
+                    as the code that was actually looked for. */}
+                <p className="numeric mt-1 font-mono text-xs text-muted-foreground">
+                  RL-{searched}
+                </p>
+                {/* A search that finds nothing inside a tab may well match
+                    outside it, and that is the likelier mistake of the two. */}
+                {filtering ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    in {DELIVERY_STATUS[status].label.toLowerCase()} orders
+                  </p>
+                ) : null}
+              </>
+            ) : filtering ? (
+              <>
+                <p className="mt-3 text-xs font-medium">
+                  Nothing {DELIVERY_STATUS[status].label.toLowerCase()}
+                </p>
+                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                  {DELIVERY_STATUS[status].description}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-xs font-medium">No orders yet</p>
+                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                  Orders you save will appear here, newest first.
+                </p>
+                <Button
+                  variant="outline"
+                  nativeButton={false}
+                  className="mt-4"
+                  render={<Link href="/user/order/new" />}
+                >
+                  Add an order
+                </Button>
+              </>
+            )}
           </div>
         ) : (
+
           <Table className="min-w-[1240px]">
             <TableHeader>
               <TableRow className="bg-muted hover:bg-muted">
@@ -88,9 +223,15 @@ export default async function OrdersPage() {
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <SelectableBody>
               {orders.map((o) => (
-                <TableRow key={o.id}>
+                <TableRow
+                  key={o.id}
+                  // Berry rather than the default grey, so a marked row is
+                  // clearly *chosen* and not just the one under the cursor —
+                  // hover is grey and the two would otherwise look alike.
+                  className="data-[state=selected]:bg-primary/10"
+                >
                   <TableCell>
                     <span className="numeric font-mono text-[11px] font-medium">
                       {o.code}
@@ -153,9 +294,18 @@ export default async function OrdersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
+            </SelectableBody>
           </Table>
         )}
+
+        {/* Inside the card and below the table, so it reads as the foot of the
+            list. Renders nothing at all when everything fits on one page. */}
+        <Pager
+          page={page}
+          pageCount={pageCount}
+          query={query}
+          status={status}
+        />
       </div>
     </div>
   );

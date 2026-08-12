@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireSession } from "@/lib/auth";
 import { updateOrderStatus } from "@/lib/order-store";
 import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
 
@@ -12,9 +13,9 @@ import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
  * current value, so "when did this ship" stays answerable.
  */
 export async function updateOrderStatusAction(formData: FormData) {
-  // NOTE: admin-only. Needs a session check once auth exists — a Server Action
-  // is reachable by direct POST, not just through this form. `changedBy` should
-  // become the signed-in user at that point.
+  await requireSession();
+  // NOTE: `changedBy` is still left empty. The session is a shared password
+  // and carries no identity, so there is no name to record yet.
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
   if (!Number.isSafeInteger(id) || id < 1) {
     throw new Error("A valid order id is required.");

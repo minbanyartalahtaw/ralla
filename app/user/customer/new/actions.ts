@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireSession } from "@/lib/auth";
 import { createCustomer, findCustomerByTiktok } from "@/lib/customer-store";
 import {
   isValidTiktokUsername,
@@ -14,8 +15,7 @@ export async function createCustomerAction(
   _prevState: CreateCustomerState,
   formData: FormData,
 ): Promise<CreateCustomerState> {
-  // NOTE: admin-only route. Once auth exists, check the session here — a Server
-  // Action is reachable by direct POST, not just through the form.
+  await requireSession();
 
   const tiktokRaw = String(formData.get("tiktokUsername") ?? "");
   const tiktokUsername = normalizeTiktokUsername(tiktokRaw);

@@ -18,8 +18,26 @@ export async function listActiveProducts(): Promise<Product[]> {
   });
 }
 
-export async function listProducts(): Promise<Product[]> {
+/** Trimmed only — a product name is free text, so inner spaces are real. */
+export function normalizeProductQuery(query: string | undefined): string {
+  return (query ?? "").trim();
+}
+
+/**
+ * Every product, or the ones whose name contains `query`.
+ *
+ * Name only for now. SKUs are matched exactly everywhere else in the app, and
+ * folding them into this search would make a lookup for `LIP` return products
+ * whose name merely mentions it.
+ *
+ * `contains` and case-insensitive: staff type a word from the middle of a
+ * cosmetic name far more often than they type its start.
+ */
+export async function listProducts(query?: string): Promise<Product[]> {
+  const name = normalizeProductQuery(query);
+
   return prisma.product.findMany({
+    where: name === "" ? undefined : { name: { contains: name, mode: "insensitive" } },
     // Active first, then alphabetical — discontinued items sink to the bottom.
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
   });
@@ -62,4 +80,18 @@ export async function setProductStock(
   stock: number,
 ): Promise<Product> {
   return prisma.product.update({ where: { id }, data: { stock } });
+}
+
+/**
+ * Sets the list price for future orders, in whole kyats.
+ *
+ * Past orders are untouched and must stay that way: `OrderItem.unitPrice` is a
+ * snapshot taken at save time, so a price rise today cannot rewrite what last
+ * month's revenue was. This only changes what the next order will cost.
+ */
+export async function setProductPrice(
+  id: number,
+  price: number,
+): Promise<Product> {
+  return prisma.product.update({ where: { id }, data: { price } });
 }

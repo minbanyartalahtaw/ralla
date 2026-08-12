@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { setProductActive, setProductStock } from "@/lib/product-store";
-import { parseStock } from "@/lib/products";
+import { requireSession } from "@/lib/auth";
+import {
+  setProductActive,
+  setProductPrice,
+  setProductStock,
+} from "@/lib/product-store";
+import { parsePrice, parseStock } from "@/lib/products";
 
 function productId(formData: FormData): number {
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
@@ -20,8 +25,7 @@ function productId(formData: FormData): number {
  * removing the product would orphan every past line that referenced it.
  */
 export async function toggleProductActiveAction(formData: FormData) {
-  // NOTE: admin-only. Needs a session check once auth exists — a Server Action
-  // is reachable by direct POST, not just through this form.
+  await requireSession();
   const isActive = formData.get("isActive") === "true";
   await setProductActive(productId(formData), isActive);
 
@@ -38,7 +42,7 @@ export async function toggleProductActiveAction(formData: FormData) {
  * keystroke can't quietly write a wrong number onto the shelf count.
  */
 export async function setProductStockAction(formData: FormData) {
-  // NOTE: admin-only. Needs a session check once auth exists.
+  await requireSession();
   const stock = parseStock(String(formData.get("stock") ?? ""));
   if (stock === null) {
     throw new Error("Stock must be a whole number of units, 0 or more.");
@@ -47,4 +51,24 @@ export async function setProductStockAction(formData: FormData) {
   await setProductStock(productId(formData), stock);
 
   revalidatePath("/user/product");
+}
+
+/**
+ * Corrects the list price from the products table.
+ *
+ * Only the catalog price moves. Every order line carries its own `unitPrice`
+ * snapshot, so nothing already sold is repriced — see setProductPrice.
+ */
+export async function setProductPriceAction(formData: FormData) {
+  await requireSession();
+  const price = parsePrice(String(formData.get("price") ?? ""));
+  if (price === null) {
+    throw new Error("Price must be a whole number of kyats, at least 1.");
+  }
+
+  await setProductPrice(productId(formData), price);
+
+  revalidatePath("/user/product");
+  // The order form's picker prints each product's price beside its name.
+  revalidatePath("/user/order/new");
 }

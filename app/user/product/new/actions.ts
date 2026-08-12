@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireSession } from "@/lib/auth";
 import { createProduct, findProductBySku } from "@/lib/product-store";
 import { isValidSku, normalizeSku, parseStock } from "@/lib/products";
 import type { CreateProductState } from "./state";
@@ -10,8 +11,7 @@ export async function createProductAction(
   _prevState: CreateProductState,
   formData: FormData,
 ): Promise<CreateProductState> {
-  // NOTE: admin-only route. Once auth exists, check the session here — a
-  // Server Action is reachable by direct POST, not just through the form.
+  await requireSession();
 
   const sku = normalizeSku(String(formData.get("sku") ?? ""));
   const name = String(formData.get("name") ?? "").trim();

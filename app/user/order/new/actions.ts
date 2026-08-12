@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireSession } from "@/lib/auth";
 import { searchCustomers } from "@/lib/customer-store";
 import type { Customer } from "@/lib/customers";
 import { createOrder, OutOfStockError } from "@/lib/order-store";
@@ -13,13 +14,15 @@ import type { CreateOrderState } from "./state";
 /**
  * Type-ahead lookup for the customer autofill on this form.
  *
- * NOTE: admin-only, and it returns phone numbers and addresses. Once auth
- * exists this needs a session check — a Server Action is callable by direct
- * POST, so without one it is an open customer-data endpoint.
+ * The session check is load-bearing here rather than defensive: this returns
+ * phone numbers and addresses, and a Server Action is callable by direct POST,
+ * so without it this is an open customer-data endpoint no matter what the
+ * proxy does to `/user/*`.
  */
 export async function searchCustomersAction(
   query: string,
 ): Promise<Customer[]> {
+  await requireSession();
   return searchCustomers(query);
 }
 
@@ -32,8 +35,7 @@ export async function createOrderAction(
   _prevState: CreateOrderState,
   formData: FormData,
 ): Promise<CreateOrderState> {
-  // NOTE: this is an admin-only route. Once auth exists, check the session
-  // here — a Server Action is reachable by direct POST, not just via the form.
+  await requireSession();
 
   // Present when the form was filled from a saved customer. The detail fields
   // are still read from the form, so an edit made before saving is respected.

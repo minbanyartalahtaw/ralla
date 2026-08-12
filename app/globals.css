@@ -283,6 +283,51 @@
 }
 
 /* ============================================================================
+   The invoice sheet is paper, not screen
+
+   `[data-print-sheet]` is always light, whatever the app's theme. Staff send a
+   screenshot of this sheet to the customer, and a screenshot doesn't trigger
+   the print rules below — so a shop working in dark mode would be mailing out a
+   near-black invoice. An invoice is a document: it is white everywhere it is
+   ever seen, and the letterhead slab stays the one heavy colour on it.
+
+   Only the tokens the sheet actually uses are restated. The raw --ralla-* and
+   --sand-* ramps below them are theme-independent already.
+   ========================================================================== */
+[data-print-sheet] {
+  --background: #ffffff;
+  --foreground: var(--ralla-900);
+  --card: #ffffff;
+  --card-foreground: var(--ralla-900);
+  --primary: var(--ralla-600);
+  --muted: var(--sand-100);
+  --muted-foreground: var(--sand-500);
+  --border: var(--sand-200);
+  --destructive: #b91c1c;
+  --sidebar: var(--ralla-900);
+  --sidebar-foreground: var(--ralla-100);
+  --pending: #b91c1c;
+  --pending-soft: #fee2e2;
+  --packing: #6b21a8;
+  --packing-soft: #f3e8ff;
+  --shipped: #b45309;
+  --shipped-soft: #fef3c7;
+  --delivered: #166534;
+  --delivered-soft: #dcfce7;
+  --cancelled: var(--sand-600);
+  --cancelled-soft: var(--sand-100);
+
+  /* Re-declaring the tokens above is NOT enough on its own. In dark mode
+     `color` is already computed on an ancestor as a pale pink, and `color`
+     inherits as a resolved value — changing what --foreground means here does
+     not go back and recompute it. Anything on the sheet without an explicit
+     colour class would keep inheriting the dark-mode text onto white paper.
+     Setting color here restarts inheritance from the sheet down. */
+  color: var(--foreground);
+  background-color: var(--card);
+}
+
+/* ============================================================================
    Print — the invoice sheet, and nothing else
 
    An order's page marks its sheet `data-print-sheet`; printing that page has to
@@ -319,30 +364,7 @@
     -webkit-print-color-adjust: exact;
   }
 
-  /* Paper is white whatever the screen was set to, so a sheet printed in dark
-     mode has to borrow the light values back. Only the tokens the sheet uses —
-     the raw ramps below them are theme-independent already. */
-  .dark {
-    --background: #ffffff;
-    --foreground: var(--ralla-900);
-    --card: #ffffff;
-    --card-foreground: var(--ralla-900);
-    --primary: var(--ralla-600);
-    --muted: var(--sand-100);
-    --muted-foreground: var(--sand-500);
-    --border: var(--sand-200);
-    --destructive: #b91c1c;
-    --sidebar: var(--ralla-900);
-    --sidebar-foreground: var(--ralla-100);
-    --pending: #b91c1c;
-    --pending-soft: #fee2e2;
-    --packing: #6b21a8;
-    --packing-soft: #f3e8ff;
-    --shipped: #b45309;
-    --shipped-soft: #fef3c7;
-    --delivered: #166534;
-    --delivered-soft: #dcfce7;
-    --cancelled: var(--sand-600);
-    --cancelled-soft: var(--sand-100);
-  }
+  /* The light values the printed sheet needs are no longer restated here — the
+     [data-print-sheet] rule above carries them at all times, so paper and
+     screenshot get the same white invoice. */
 }

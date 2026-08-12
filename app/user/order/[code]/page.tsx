@@ -38,6 +38,13 @@ export async function generateMetadata({
 const label = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
 /**
+ * Sheet text runs a step larger than the rest of the app. The app is read at
+ * arm's length on a desktop; this sheet is read as a screenshot forwarded to a
+ * customer's phone, where 11px of address is a squint.
+ */
+const sheetBody = "text-sm";
+
+/**
  * The read-only twin of the orders table's StatusSelect. Deliberately not
  * clickable: this is a record of what happened, and the action behind that chip
  * revalidates the orders list, not this route.
@@ -64,7 +71,7 @@ function MetaRow({
   return (
     <div className="flex items-baseline justify-between gap-6">
       <dt className={label}>{title}</dt>
-      <dd className="text-xs font-medium">{children}</dd>
+      <dd className={`${sheetBody} font-medium`}>{children}</dd>
     </div>
   );
 }
@@ -95,48 +102,48 @@ export default async function OrderDetailPage({
       >
         {/* Letterhead: the dark berry slab, and the only heavy colour on the
             sheet apart from the total. */}
-        <header className="flex items-start justify-between gap-4 bg-sidebar px-6 py-6 text-sidebar-foreground sm:px-10 sm:py-7">
+        <header className="flex items-baseline justify-between gap-4 bg-sidebar px-6 py-5 text-sidebar-foreground sm:px-9 sm:py-6">
           <p className="text-base font-bold tracking-[0.22em] text-sidebar-accent-foreground uppercase">
             Ralla
           </p>
           <div className="text-right">
-            <p className="text-[11px] font-semibold tracking-[0.18em] uppercase opacity-75">
+            <p className="text-[10px] font-semibold tracking-[0.18em] uppercase opacity-70">
               Invoice
             </p>
-            <h1 className="numeric mt-1 font-mono text-sm font-semibold text-sidebar-accent-foreground">
+            <h1 className="numeric mt-0.5 font-mono text-sm font-semibold text-sidebar-accent-foreground">
               {order.code}
             </h1>
           </div>
         </header>
 
-        <div className="px-6 py-7 sm:px-10 sm:py-9">
+        <div className="px-6 py-6 sm:px-9 sm:py-7">
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
-  
+              <p className={label}>Billed to</p>
               {/* The snapshot, not the customer's current record — this is
                   where the parcel was actually addressed. */}
-              <address className="mt-2 text-xs leading-relaxed not-italic">
+              <address className={`mt-1.5 leading-relaxed not-italic ${sheetBody}`}>
                 {customer ? (
                   <Link
                     href={`/user/customer/${customer.code}`}
-                    className="font-medium hover:underline"
+                    className="font-semibold hover:underline"
                   >
                     {order.customerName}
                   </Link>
                 ) : (
-                  <span className="font-medium">{order.customerName}</span>
+                  <span className="font-semibold">{order.customerName}</span>
                 )}
                 <div className="numeric text-muted-foreground">
                   {order.phone}
                 </div>
-                <div className="mt-1.5 text-muted-foreground">
-                  {order.address ? <div>{order.address}</div> : null}
-                  <div>{order.city}</div>
+                <div className="text-muted-foreground">
+                  {order.address ? <span>{order.address}, </span> : null}
+                  <span>{order.city}</span>
                 </div>
               </address>
             </div>
 
-            <dl className="space-y-2.5 sm:ml-auto sm:w-60">
+            <dl className="space-y-2 sm:ml-auto sm:w-56">
               <MetaRow title="Date">
                 <span className="numeric">{formatDateTime(order.placedAt)}</span>
               </MetaRow>
@@ -159,7 +166,7 @@ export default async function OrderDetailPage({
 
           {/* Qty and unit price are their own columns from `sm` up; on a phone
               they collapse into a sub-line so the row never scrolls sideways. */}
-          <table className="mt-9 w-full text-xs">
+          <table className={`mt-7 w-full ${sheetBody}`}>
             <thead>
               <tr className="border-b">
                 <th scope="col" className={`${label} pb-2 text-left`}>
@@ -187,19 +194,19 @@ export default async function OrderDetailPage({
                   snapshot, not today's catalog entry. */}
               {order.items.map((item) => (
                 <tr key={item.id}>
-                  <td className="py-3 pr-4">
+                  <td className="py-2.5 pr-4">
                     <span className="font-medium">{item.name}</span>
-                    <span className="numeric mt-0.5 block text-[11px] text-muted-foreground sm:hidden">
+                    <span className="numeric mt-0.5 block text-xs text-muted-foreground sm:hidden">
                       {item.quantity} × {formatKyat(item.unitPrice)}
                     </span>
                   </td>
-                  <td className="numeric hidden py-3 pl-4 text-right text-muted-foreground sm:table-cell">
+                  <td className="numeric hidden py-2.5 pl-4 text-right text-muted-foreground sm:table-cell">
                     {item.quantity}
                   </td>
-                  <td className="numeric hidden py-3 pl-6 text-right text-muted-foreground sm:table-cell">
+                  <td className="numeric hidden py-2.5 pl-6 text-right text-muted-foreground sm:table-cell">
                     {formatKyat(item.unitPrice)}
                   </td>
-                  <td className="numeric py-3 pl-6 text-right font-medium">
+                  <td className="numeric py-2.5 pl-6 text-right font-medium">
                     {formatKyat(lineTotal(item))}
                   </td>
                 </tr>
@@ -207,21 +214,19 @@ export default async function OrderDetailPage({
             </tbody>
           </table>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-5 flex justify-end">
             <div className="flex w-full max-w-[17rem] items-baseline justify-between gap-4 border-t-2 border-primary pt-3">
               <div>
                 <p className={label}>Total</p>
-                <p className="numeric mt-0.5 text-[11px] text-muted-foreground">
+                <p className="numeric mt-0.5 text-xs text-muted-foreground">
                   {itemCount(order.items)} items
                 </p>
               </div>
-              <p className="numeric text-xl font-semibold text-primary">
+              <p className="numeric text-2xl font-semibold text-primary">
                 {formatKyat(order.total)}
               </p>
             </div>
           </div>
-
-
         </div>
       </article>
 

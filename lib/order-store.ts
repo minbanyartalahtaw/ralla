@@ -7,6 +7,7 @@
 import { generateOrderCode } from "@/lib/order-code";
 import { prisma } from "@/lib/prisma";
 import {
+  DELIVERY_STATUS_KEYS,
   formatDate,
   itemsTotal,
   type DeliveryStatus,
@@ -74,11 +75,141 @@ export type NewOrder = {
   lines: NewOrderLine[];
 };
 
-export async function listOrders(): Promise<OrderWithItems[]> {
+/**
+ * Reduces a typed order code to something worth matching on.
+ *
+ * Spaces come off anywhere, not just the ends: a code copied out of a chat
+ * message or a spreadsheet cell arrives as `RL-260804 TXI` often enough that
+ * an exact match would find nothing on a query that is otherwise correct.
+ *
+ * A leading `RL-` comes off too. The search box shows it as a fixed prefix so
+ * nobody has to type it — but a whole code pasted in is the commonest thing to
+ * land in that box, and without this it would go looking for `RL-RL-260804TXI`.
+ * The dash is optional because the prefix gets pasted both ways.
+ */
+export function normalizeOrderQuery(query: string | undefined): string {
+  return (query ?? "").replace(/\s+/g, "").replace(/^rl-?/i, "");
+}
+
+/** What the orders list is narrowed by. Both are optional and combine. */
+export type OrderFilter = {
+  /** Matched against the order code. See normalizeOrderQuery(). */
+  query?: string;
+  /** One delivery status, or undefined for all of them. */
+  status?: DeliveryStatus;
+};
+
+/**
+ * Turns a filter into a Prisma `where`, so the list and its counts can never
+ * disagree about what is being looked at.
+ */
+function orderWhere({ query, status }: OrderFilter) {
+  const code = normalizeOrderQuery(query);
+
+  return {
+    ...(code === "" ? {} : { code: { contains: code, mode: "insensitive" as const } }),
+    ...(status ? { status } : {}),
+  };
+}
+
+/**
+ * Orders, newest first, narrowed by code and/or delivery status.
+ *
+ * Code search only, deliberately: `RL-260804TXI` is what staff have in front of
+ * them when someone asks after an order, and matching names or phones here
+ * would make a search for a code quietly return rows that aren't it.
+ *
+ * `contains` rather than an exact match, so the tail of a code is enough —
+ * codes are matched case-insensitively for the same reason the detail routes
+ * are: they're stored uppercase but get typed and pasted in every case.
+ *
+ * `id` breaks ties on `placedAt`. Two orders saved in the same millisecond have
+ * no order between them otherwise, so the list could shuffle them between two
+ * renders of the same data — and would put one on both sides of a page
+ * boundary the day this list is paginated.
+ */
+export async function listOrders(
+  filter: OrderFilter = {},
+): Promise<OrderWithItems[]> {
   return prisma.order.findMany({
+    where: orderWhere(filter),
     include: { items: true },
-    orderBy: { placedAt: "desc" },
+    orderBy: [{ placedAt: "desc" }, { id: "desc" }],
   });
+}
+
+/** Rows per page on the orders list. */
+export const ORDERS_PER_PAGE = 9;
+
+export type OrderPage = {
+  orders: OrderWithItems[];
+  /** Every order matching the filter, not just this page. */
+  total: number;
+  /** The page actually returned — the request is clamped, see below. */
+  page: number;
+  pageCount: number;
+};
+
+/**
+ * One page of orders, newest first.
+ *
+ * The count runs first because the requested page has to be clamped against it:
+ * `?page=999` on a three-page list should land on page 3, not render an empty
+ * table that looks like the filter is broken. `pageCount` is at least 1 so an
+ * empty list still reports "page 1 of 1" rather than "1 of 0".
+ *
+ * Both queries share `orderWhere()`, so the total can never describe a
+ * different set of orders than the rows do.
+ */
+export async function listOrdersPage(
+  filter: OrderFilter = {},
+  requestedPage = 1,
+): Promise<OrderPage> {
+  const where = orderWhere(filter);
+
+  const total = await prisma.order.count({ where });
+  const pageCount = Math.max(1, Math.ceil(total / ORDERS_PER_PAGE));
+  const page = Math.min(Math.max(1, requestedPage), pageCount);
+
+  const orders = await prisma.order.findMany({
+    where,
+    include: { items: true },
+    // The `id` tiebreaker is load-bearing here: without it two orders sharing a
+    // `placedAt` have no defined order, so one could appear on both page 1 and
+    // page 2 while another is skipped entirely.
+    orderBy: [{ placedAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * ORDERS_PER_PAGE,
+    take: ORDERS_PER_PAGE,
+  });
+
+  return { orders, total, page, pageCount };
+}
+
+/**
+ * How many orders sit in each delivery status, under the same filter.
+ *
+ * Counted in the database rather than by loading the orders and tallying them:
+ * the point of these numbers is to say how much is behind a tab you have NOT
+ * opened, so fetching those rows to count them would defeat the filter.
+ *
+ * Every status is present in the result, zeros included — a tab that reads
+ * "Cancelled 0" is information, a tab with no number looks broken.
+ */
+export async function countOrdersByStatus(
+  filter: Omit<OrderFilter, "status"> = {},
+): Promise<Record<DeliveryStatus, number>> {
+  const rows = await prisma.order.groupBy({
+    by: ["status"],
+    where: orderWhere(filter),
+    _count: { _all: true },
+  });
+
+  const counts = Object.fromEntries(
+    DELIVERY_STATUS_KEYS.map((s) => [s, 0]),
+  ) as Record<DeliveryStatus, number>;
+
+  for (const row of rows) counts[row.status] = row._count._all;
+  return counts;
 }
 
 /**

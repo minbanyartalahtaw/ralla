@@ -69,18 +69,27 @@ No test runner is set up yet.
 
 ```
 app/
-  page.tsx            # theme & component reference — NOT the real dashboard
+  page.tsx            # redirect only — there is no landing page
   globals.css         # all theme tokens
+  login/              # the sign-in form; the one route outside /user
   user/               # the admin app; /user redirects to /user/dashboard
     layout.tsx        # sidebar + breadcrumb shell
-    dashboard/ order/ customer/
+    dashboard/ order/ customer/ product/
+    theme/            # theme & component reference — see below
 components/ui/        # shadcn components (generated — regenerate, don't hand-write)
 lib/                  # domain (orders, customers) + *-store.ts persistence
 prisma/               # schema, migrations, seed
 generated/prisma/     # Prisma client — gitignored, made by `prisma generate`
 ```
 
-`app/page.tsx` is still the static style guide; move it to `/styleguide` or delete it.
+**There is no landing page.** RALLA has no public face, so `/` only redirects to
+`/user/dashboard` — which `proxy.ts` turns into `/login` for anyone without a session.
+
+`/user/theme` is the style guide: every token in `globals.css` rendered once. It is
+**deliberately unlinked** — no nav entry, no button, nothing anywhere points at it, and
+it is reachable only by typing the URL. It lives under `/user` so it still needs a
+session; it is a component gallery, not something a customer or a passer-by should
+find. Keep it that way when adding to the sidebar.
 
 Prefer colocating route-specific components inside their route folder; promote to a
 shared `components/` directory only once something is used by two or more routes.
@@ -182,6 +191,50 @@ order does not restore it.
 
 Storage is Postgres via Prisma. `lib/*-store.ts` are the only modules that touch it;
 everything else goes through them. Run `npm run db:up` then `npm run db:migrate`.
+
+## Auth
+
+**One shared username and password, no accounts.** `ADMIN_USERNAME` and
+`ADMIN_PASSWORD` in the environment are the whole of it — there is no `Staff` table, and
+the username is a second thing to *know*, not a second *person*. The session still
+carries no identity, which is why `OrderStatusEvent.changedBy` is written empty.
+Per-staff accounts are the obvious next step; until then nothing can say *who* moved an
+order. Usernames are matched case-insensitively and trimmed, so a phone keyboard's
+capitalisation can't lock anyone out.
+
+A wrong username and a wrong password give the **same** message, and both halves are
+always compared (`&`, never `&&`). Saying which one missed — in the text or in the
+timing — would let someone confirm the username alone, and with a shared login that is
+half the secret.
+
+The session is a cookie holding `<payload>.<HMAC-SHA256>` from `lib/session.ts`, signed
+with a key mixed from `SESSION_SECRET` **and both credentials**, fed through JSON so the
+pair can't run together. Mixing them in is what makes rotating them mean something: you
+change a shared login precisely because someone should no longer have access, and a key
+derived from the secret alone would leave their cookie valid for the rest of the week.
+The expiry lives inside the signed payload, not just in the cookie's Max-Age — Max-Age
+is a hint to a browser, and a replayed cookie never expires.
+
+Two layers guard the app, and they are not redundant:
+
+- `proxy.ts` (Next 16's rename of `middleware.ts` — the exported function must be
+  called `proxy`) redirects `/user/*` to `/login` when the cookie doesn't verify, and
+  bounces a signed-in browser off `/login`. It reads only the cookie, never the
+  database: it runs on every matched request, prefetches included.
+- `requireSession()` from `lib/auth.ts` runs at the top of **every** Server Action. A
+  Server Action is an ordinary POST, so this is what refuses one that never navigated
+  through the proxy. `searchCustomersAction` is the sharp case — it returns phone
+  numbers and addresses.
+
+`?next=` always goes through `safeNextPath()`, which allows only paths inside `/user`.
+`//evil.example` starts with `/` and would sail past a naive prefix test.
+
+Login is throttled in memory, 8 attempts per 10 minutes per IP. One shared login is the
+easiest thing in the world to guess at in bulk. It resets on deploy and a forged
+`x-forwarded-for` gets a fresh bucket, so move it to Postgres if this ever faces the
+open internet.
+
+`/` (the style guide) is deliberately public. Everything real lives under `/user`.
 
 ## Conventions
 

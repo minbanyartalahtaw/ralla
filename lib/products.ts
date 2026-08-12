@@ -23,7 +23,7 @@ export type NewProduct = Omit<
  * UI's name for the same thing, so the two labels aren't hand-typed at call
  * sites. Use `productActivity()` to cross over.
  */
-export type ProductActivity = "active" | "discontinued";
+export type ProductActivity = "active" | "deactivate";
 
 type ActivityMeta = {
   label: string;
@@ -46,8 +46,8 @@ export const PRODUCT_ACTIVITY: Record<ProductActivity, ActivityMeta> = {
     chip: "bg-delivered-soft text-delivered",
     dot: "bg-delivered",
   },
-  discontinued: {
-    label: "Discontinued",
+  deactivate: {
+    label: "Deactivate",
     description: "Hidden from the order picker",
     chip: "bg-cancelled-soft text-cancelled",
     dot: "bg-cancelled",
@@ -59,7 +59,7 @@ export const PRODUCT_ACTIVITY_KEYS = Object.keys(
 ) as ProductActivity[];
 
 export function productActivity(isActive: boolean): ProductActivity {
-  return isActive ? "active" : "discontinued";
+  return isActive ? "active" : "deactivate";
 }
 
 /**
@@ -89,4 +89,20 @@ export function parseStock(raw: string): number | null {
   if (!/^\d+$/.test(digits)) return null;
   const stock = Number.parseInt(digits, 10);
   return Number.isSafeInteger(stock) ? stock : null;
+}
+
+/**
+ * Price is whole kyats — never a float, see CLAUDE.md. Thousands separators are
+ * accepted because `12,000` is how the number is read back off the screen.
+ *
+ * Unlike stock, an empty field is NOT zero and zero is not a price: a product
+ * that costs nothing is a typo, and it would quietly add itself free to every
+ * order placed afterwards. Returns null for anything under 1 so the caller can
+ * refuse it rather than store it.
+ */
+export function parsePrice(raw: string): number | null {
+  const digits = raw.trim().replace(/,/g, "");
+  if (!/^\d+$/.test(digits)) return null;
+  const price = Number.parseInt(digits, 10);
+  return Number.isSafeInteger(price) && price >= 1 ? price : null;
 }

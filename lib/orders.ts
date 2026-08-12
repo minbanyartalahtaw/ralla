@@ -92,6 +92,21 @@ export const DELIVERY_STATUS: Record<DeliveryStatus, StatusMeta> = {
   },
 };
 
+/**
+ * Reads a delivery status off a URL or a form, or returns undefined.
+ *
+ * Never trust a posted or pasted enum: `?status=deleted` has to mean "no
+ * filter", not a database error. Undefined is the honest answer for anything
+ * that isn't one of the five, and callers treat it as "all".
+ */
+export function parseDeliveryStatus(
+  raw: string | undefined,
+): DeliveryStatus | undefined {
+  return raw && Object.hasOwn(DELIVERY_STATUS, raw)
+    ? (raw as DeliveryStatus)
+    : undefined;
+}
+
 export const DELIVERY_STATUS_KEYS = Object.keys(
   DELIVERY_STATUS,
 ) as DeliveryStatus[];
@@ -106,15 +121,41 @@ export const PAYMENT_METHOD_KEYS = Object.keys(
   PAYMENT_METHOD,
 ) as PaymentMethod[];
 
+/**
+ * Where an order can be delivered: Myanmar's seven regions, seven states, and
+ * the union territory — not a list of towns.
+ *
+ * A parcel goes to a street address inside one of these, so the state or region
+ * is the part worth constraining; the town is free text in `address`, where a
+ * fixed list could only ever be wrong by omission.
+ *
+ * Stored in Burmese, which is what goes on the delivery label. The value is
+ * kept verbatim on the order as a snapshot, so this list is the vocabulary for
+ * *new* orders only — renaming an entry here does not rewrite where past
+ * parcels went, and must not.
+ *
+ * Yangon leads because almost every order is one. Nay Pyi Taw sits between the
+ * two groups: it is a union territory, so it belongs to neither.
+ */
 export const CITIES = [
-  "Yangon",
-  "Mandalay",
-  "Nay Pyi Taw",
-  "Mawlamyine",
-  "Taunggyi",
-  "Pathein",
-  "Bago",
-  "Monywa",
+  // ── တိုင်းဒေသကြီး (၇) ──
+  "ရန်ကုန်တိုင်းဒေသကြီး",
+  "မန္တလေးတိုင်းဒေသကြီး",
+  "စစ်ကိုင်းတိုင်းဒေသကြီး",
+  "မကွေးတိုင်းဒေသကြီး",
+  "ပဲခူးတိုင်းဒေသကြီး",
+  "ဧရာဝတီတိုင်းဒေသကြီး",
+  "တနင်္သာရီတိုင်းဒေသကြီး",
+  // ── ပြည်ထောင်စုနယ်မြေ ──
+  "နေပြည်တော်",
+  // ── ပြည်နယ် (၇) ──
+  "ကချင်ပြည်နယ်",
+  "ကယားပြည်နယ်",
+  "ကရင်ပြည်နယ်",
+  "ချင်းပြည်နယ်",
+  "မွန်ပြည်နယ်",
+  "ရခိုင်ပြည်နယ်",
+  "ရှမ်းပြည်နယ်",
 ] as const;
 
 export function formatKyat(amount: number) {
