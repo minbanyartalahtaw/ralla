@@ -59,7 +59,7 @@ export async function createProductAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
-  await createProduct({
+  const product = await createProduct({
     sku,
     name,
     price: price!,
@@ -71,5 +71,5 @@ export async function createProductAction(
   // A new active product changes what the order form can pick.
   revalidatePath("/user/order/new");
 
-  redirect("/user/product");
+  redirect(`/user/product?created=${product.sku}`);
 }

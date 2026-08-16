@@ -55,7 +55,7 @@ export async function createCustomerAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
-  await createCustomer({
+  const customer = await createCustomer({
     tiktokUsername,
     tiktokName,
     name,
@@ -66,5 +66,5 @@ export async function createCustomerAction(
   });
 
   revalidatePath("/user/customer");
-  redirect("/user/customer");
+  redirect(`/user/customer?created=${customer.code}`);
 }

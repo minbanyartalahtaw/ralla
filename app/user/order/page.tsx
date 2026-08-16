@@ -10,6 +10,7 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { CreatedToast } from "@/components/created-toast";
 import {
   InputGroup,
   InputGroupAddon,
@@ -53,8 +54,9 @@ const th = "text-[11px] font-semibold tracking-wide text-muted-foreground upperc
 export default async function OrdersPage({
   searchParams,
 }: PageProps<"/user/order">) {
-  const { q, status: rawStatus, page: rawPage } = await searchParams;
+  const { q, status: rawStatus, page: rawPage, created } = await searchParams;
   const query = typeof q === "string" ? q : "";
+  const createdCode = typeof created === "string" ? created : undefined;
   const status = parseDeliveryStatus(
     typeof rawStatus === "string" ? rawStatus : undefined,
   );
@@ -82,6 +84,12 @@ export default async function OrdersPage({
           This keeps the document with a top-level heading for screen readers
           and the tab order, which a page with no h1 at all would lose. */}
       <h1 className="sr-only">Orders</h1>
+
+      <CreatedToast
+        code={createdCode}
+        message={createdCode ? `Order ${createdCode} created.` : ""}
+        detailHref={createdCode ? `/user/order/${createdCode}` : undefined}
+      />
 
       <div className="flex items-center gap-3">
         {/* A plain GET form, so the search lands in the URL: a filtered list
@@ -273,7 +281,7 @@ export default async function OrdersPage({
                     {formatDate(o.placedAt)}
                   </TableCell>
                   <TableCell>
-                    <StatusSelect orderId={o.id} status={o.status} />
+                    <StatusSelect orderId={o.id} code={o.code} status={o.status} />
                   </TableCell>
                   <TableCell className="text-right">
                     {/* Addressed by `code`, not `id`: the code is what's on

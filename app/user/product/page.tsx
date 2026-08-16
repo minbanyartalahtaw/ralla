@@ -9,6 +9,7 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { CreatedToast } from "@/components/created-toast";
 import {
   InputGroup,
   InputGroupAddon,
@@ -40,9 +41,10 @@ const th = "text-[11px] font-semibold tracking-wide text-muted-foreground upperc
 export default async function ProductsPage({
   searchParams,
 }: PageProps<"/user/product">) {
-  const { q } = await searchParams;
+  const { q, created } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const products = await listProducts(query);
+  const createdCode = typeof created === "string" ? created : undefined;
 
   // Two kinds of empty: a catalog with nothing in it wants "add one", a search
   // that found nothing wants to say what it looked for.
@@ -54,6 +56,11 @@ export default async function ProductsPage({
       {/* The visible heading is gone — the breadcrumb already names the page.
           This keeps a top-level heading for screen readers. */}
       <h1 className="sr-only">Products</h1>
+
+      <CreatedToast
+        code={createdCode}
+        message={createdCode ? `Product ${createdCode} added.` : ""}
+      />
 
       <div className="flex items-center gap-3">
         {/* A plain GET form, so the search lands in the URL and the filtered

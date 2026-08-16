@@ -10,6 +10,7 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
+import { CreatedToast } from "@/components/created-toast";
 import { Highlight } from "@/components/highlight";
 import {
   InputGroup,
@@ -28,9 +29,10 @@ export const metadata: Metadata = {
 export default async function CustomersPage({
   searchParams,
 }: PageProps<"/user/customer">) {
-  const { q } = await searchParams;
+  const { q, created } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const customers = await listCustomers(query);
+  const createdCode = typeof created === "string" ? created : undefined;
 
   const searched = normalizeCustomerQuery(query);
   const searching = searched !== "";
@@ -43,6 +45,12 @@ export default async function CustomersPage({
       {/* The visible heading is gone — the breadcrumb already names the page.
           This keeps a top-level heading for screen readers. */}
       <h1 className="sr-only">Customers</h1>
+
+      <CreatedToast
+        code={createdCode}
+        message={createdCode ? `Customer ${createdCode} added.` : ""}
+        detailHref={createdCode ? `/user/customer/${createdCode}` : undefined}
+      />
 
       <div className="flex items-center gap-3">
         {/* A plain GET form, so the search lands in the URL and the filtered

@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
 
 import {
   Popover,
@@ -26,11 +28,14 @@ import { updateOrderStatusAction } from "./actions";
  */
 export function StatusSelect({
   orderId,
+  code,
   status,
 }: {
   orderId: number;
+  code: string;
   status: DeliveryStatus;
 }) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [optimistic, setOptimistic] = React.useState<DeliveryStatus | null>(
@@ -51,6 +56,14 @@ export function StatusSelect({
       data.set("status", next);
       try {
         await updateOrderStatusAction(data);
+        toast.success(`${code} marked ${DELIVERY_STATUS[next].label}.`, {
+          action: {
+            label: "View details",
+            onClick: () => router.push(`/user/order/${code}`),
+          },
+        });
+      } catch {
+        toast.error(`Couldn't update ${code}. Try again.`);
       } finally {
         // Drop the optimistic value either way: on success the revalidated
         // server data now says the same thing, and on failure the row should

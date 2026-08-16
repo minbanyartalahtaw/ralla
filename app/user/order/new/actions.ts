@@ -8,7 +8,12 @@ import { searchCustomers } from "@/lib/customer-store";
 import type { Customer } from "@/lib/customers";
 import { createOrder, OutOfStockError } from "@/lib/order-store";
 import { getProduct } from "@/lib/product-store";
-import { CITIES, PAYMENT_METHOD, type PaymentMethod } from "@/lib/orders";
+import {
+  CITIES,
+  PAYMENT_METHOD,
+  type OrderWithItems,
+  type PaymentMethod,
+} from "@/lib/orders";
 import { parseOrderLines } from "./parse-lines";
 import type { CreateOrderState } from "./state";
 
@@ -70,8 +75,9 @@ export async function createOrderAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
+  let order: OrderWithItems;
   try {
-    await createOrder({
+    order = await createOrder({
       customerId,
       customerName: customer,
       phone,
@@ -101,5 +107,5 @@ export async function createOrderAction(
   revalidatePath("/user/product");
   revalidatePath("/user/order/new");
 
-  redirect("/user/order");
+  redirect(`/user/order?created=${order.code}`);
 }
