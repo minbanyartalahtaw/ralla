@@ -12,9 +12,7 @@ import {
 } from "@/lib/order-store";
 import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
 
-import { BreakdownChart } from "./breakdown-chart";
-import { OrdersChart } from "./orders-chart";
-import { RevenueChart } from "./revenue-chart";
+import { BreakdownChart, OrdersChart, RevenueChart } from "./lazy-charts";
 
 export const metadata: Metadata = {
   title: "Dashboard — RALLA",
