@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "RALLA — Order & Delivery Admin",
   description: "Internal admin for tracking RALLA orders and delivery status.",
+  icons: {
+    icon: "/logo/icon-circle-192.png",
+    apple: "/logo/icon-circle-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RALLA",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#a53860",
 };
 
 
