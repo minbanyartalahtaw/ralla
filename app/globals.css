@@ -330,45 +330,21 @@
 /* ============================================================================
    Animation — the 🌸 loading mark
 
-   One motion, reused everywhere a route or a chart is waiting on data: rooted
-   at its base like a stem in a breeze, with a soft glow shifting underneath.
-   Staff waiting on this dozens of times a shift is why it stays organic and
-   quiet rather than a spinner or an insistent pulse.
+   One motion, reused everywhere a route or a chart is waiting on data: a
+   plain, steady spin.
    ========================================================================== */
-@keyframes flower-sway {
-  0%,
-  100% {
-    transform: rotate(-9deg);
-  }
-  50% {
-    transform: rotate(9deg);
+@keyframes flower-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-@keyframes flower-glow {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: scale(0.9);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.1);
-  }
-}
-
-.animate-flower-sway {
-  transform-origin: 50% 100%;
-  animation: flower-sway 2.4s ease-in-out infinite;
-}
-
-.animate-flower-glow {
-  animation: flower-glow 2.6s ease-in-out infinite;
+.animate-flower-spin {
+  animation: flower-spin 1.1s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-flower-sway,
-  .animate-flower-glow {
+  .animate-flower-spin {
     animation: none;
   }
 }

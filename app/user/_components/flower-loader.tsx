@@ -1,9 +1,8 @@
 /**
  * The one loading state for the whole admin app — the sidebar's own mark
- * (see user-sidebar.tsx), swaying like a stem in a breeze rather than a
- * spinner. Used both for whole-route loading (app/user/loading.tsx) and for
- * the dashboard's lazy-loaded charts, so a page never shows two different
- * ideas of "loading" at once.
+ * (see user-sidebar.tsx), spinning. Used both for whole-route loading
+ * (app/user/loading.tsx) and for the dashboard's lazy-loaded charts, so a
+ * page never shows two different ideas of "loading" at once.
  */
 export function FlowerLoader({
   label,
@@ -21,22 +20,10 @@ export function FlowerLoader({
       }
     >
       <span
-        className={`relative flex items-end justify-center ${
-          size === "lg" ? "size-16" : "size-8"
-        }`}
+        className={`animate-flower-spin ${size === "lg" ? "text-5xl" : "text-2xl"}`}
+        aria-hidden
       >
-        <span
-          className="animate-flower-glow absolute inset-[16%] rounded-full bg-primary/40 blur-[2px]"
-          aria-hidden
-        />
-        <span
-          className={`animate-flower-sway relative ${
-            size === "lg" ? "text-5xl" : "text-2xl"
-          }`}
-          aria-hidden
-        >
-          🌸
-        </span>
+        🌸
       </span>
       {label ? (
         <p className="text-xs text-muted-foreground">{label}</p>
