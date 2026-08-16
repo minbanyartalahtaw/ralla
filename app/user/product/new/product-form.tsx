@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Alert02Icon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,35 +69,6 @@ export function ProductForm() {
     Number.isSafeInteger(parsedPrice) && parsedPrice > 0
       ? formatKyat(parsedPrice)
       : null;
-
-  if (state.created) {
-    return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <span className="inline-flex size-9 items-center justify-center rounded-full bg-delivered-soft text-delivered">
-          <HugeiconsIcon icon={Tick02Icon} size={18} strokeWidth={2} />
-        </span>
-        <p className="mt-3 text-sm font-medium">Product saved</p>
-        <p className="numeric mt-1 font-mono text-xs text-muted-foreground">
-          {state.created.sku} · {state.created.name}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Active products appear in the picker on a new order.
-        </p>
-        <div className="mt-5 flex justify-center gap-2">
-          <Button nativeButton={false} render={<Link href="/user/product/new" />}>
-            Add another
-          </Button>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/user/product" />}
-          >
-            Back to products
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <form action={formAction} className="space-y-6">

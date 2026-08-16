@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, TiktokIcon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, TiktokIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -122,32 +122,6 @@ export function OrderForm({ products }: { products: Product[] }) {
   // Stock as it was when the page loaded. The action re-checks against the live
   // counts, so this only saves a round trip — it isn't the guarantee.
   const shortfalls = stockShortfalls(lines, products);
-
-  if (state.createdId) {
-    return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <span className="inline-flex size-9 items-center justify-center rounded-full bg-delivered-soft text-delivered">
-          <HugeiconsIcon icon={Tick02Icon} size={18} strokeWidth={2} />
-        </span>
-        <p className="mt-3 text-sm font-medium">Order saved</p>
-        <p className="numeric mt-1 font-mono text-xs text-muted-foreground">
-          {state.createdId}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          It starts as <span className="font-medium">Pending</span> and is ready
-          to be picked.
-        </p>
-        <div className="mt-5 flex justify-center gap-2">
-          <Button nativeButton={false} render={<Link href="/user/order/new" />}>
-            Add another order
-          </Button>
-          <Button variant="outline" nativeButton={false} render={<Link href="/user/order" />}>
-            Back to orders
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <form action={formAction} className="space-y-6">

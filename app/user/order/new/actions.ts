@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
 import { searchCustomers } from "@/lib/customer-store";
@@ -69,9 +70,8 @@ export async function createOrderAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
-  let order;
   try {
-    order = await createOrder({
+    await createOrder({
       customerId,
       customerName: customer,
       phone,
@@ -101,5 +101,5 @@ export async function createOrderAction(
   revalidatePath("/user/product");
   revalidatePath("/user/order/new");
 
-  return { errors: {}, createdId: order.code };
+  redirect("/user/order");
 }

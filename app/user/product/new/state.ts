@@ -7,8 +7,6 @@
 export type CreateProductState = {
   /** Field name → error message. Empty when the submission was valid. */
   errors: Record<string, string>;
-  /** Set once the product is stored, so the form can confirm it. */
-  created?: { sku: string; name: string };
   message?: string;
 };
 

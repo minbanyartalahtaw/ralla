@@ -4,8 +4,8 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowRight01Icon,
   Cancel01Icon,
-  PlusSignIcon,
   Search01Icon,
+  UserAdd01Icon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 
@@ -88,7 +88,7 @@ export default async function CustomersPage({
         </form>
 
         <Button nativeButton={false} render={<Link href="/user/customer/new" />}>
-          <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
+          <HugeiconsIcon icon={UserAdd01Icon} data-icon="inline-start" />
           
         </Button>
       </div>

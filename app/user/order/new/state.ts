@@ -7,8 +7,6 @@
 export type CreateOrderState = {
   /** Field name → error message. Empty when the submission was valid. */
   errors: Record<string, string>;
-  /** Set once the order is stored, so the form can confirm it. */
-  createdId?: string;
   message?: string;
 };
 

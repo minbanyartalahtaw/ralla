@@ -164,6 +164,7 @@ export function UserSidebar({ username }: { username: string }) {
 
                 <DropdownMenuItem
                   variant="destructive"
+                  className="w-full"
                   // Menu items render a div by default. Saying so keeps Base UI
                   // from bolting its own Enter/Space handling onto an element
                   // that already submits on both.

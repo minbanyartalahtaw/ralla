@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
 import { createProduct, findProductBySku } from "@/lib/product-store";
@@ -58,7 +59,7 @@ export async function createProductAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
-  const product = await createProduct({
+  await createProduct({
     sku,
     name,
     price: price!,
@@ -70,8 +71,5 @@ export async function createProductAction(
   // A new active product changes what the order form can pick.
   revalidatePath("/user/order/new");
 
-  return {
-    errors: {},
-    created: { sku: product.sku, name: product.name },
-  };
+  redirect("/user/product");
 }

@@ -7,9 +7,6 @@
 export type CreateCustomerState = {
   /** Field name → error message. Empty when the submission was valid. */
   errors: Record<string, string>;
-  /** Set once the customer is stored, so the form can confirm it. */
-  /** The human-facing code (RLC-1001), not the internal id. */
-  created?: { id: string; tiktokUsername: string };
   message?: string;
 };
 

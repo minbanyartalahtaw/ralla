@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
 import { createCustomer, findCustomerByTiktok } from "@/lib/customer-store";
@@ -54,7 +55,7 @@ export async function createCustomerAction(
     return { errors, message: "Check the highlighted fields." };
   }
 
-  const customer = await createCustomer({
+  await createCustomer({
     tiktokUsername,
     tiktokName,
     name,
@@ -65,9 +66,5 @@ export async function createCustomerAction(
   });
 
   revalidatePath("/user/customer");
-
-  return {
-    errors: {},
-    created: { id: customer.code, tiktokUsername: customer.tiktokUsername },
-  };
+  redirect("/user/customer");
 }

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, TiktokIcon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, TiktokIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -78,35 +78,6 @@ export function CustomerForm() {
   // visibly resolves to a handle before submitting.
   const normalized = normalizeTiktokUsername(tiktok);
   const showNormalized = normalized !== "" && normalized !== tiktok.trim();
-
-  if (state.created) {
-    return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <span className="inline-flex size-9 items-center justify-center rounded-full bg-delivered-soft text-delivered">
-          <HugeiconsIcon icon={Tick02Icon} size={18} strokeWidth={2} />
-        </span>
-        <p className="mt-3 text-sm font-medium">Customer saved</p>
-        <p className="numeric mt-1 font-mono text-xs text-muted-foreground">
-          @{state.created.tiktokUsername} · {state.created.id}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Their details will fill in automatically on a new order.
-        </p>
-        <div className="mt-5 flex justify-center gap-2">
-          <Button nativeButton={false} render={<Link href="/user/customer/new" />}>
-            Add another
-          </Button>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/user/customer" />}
-          >
-            Back to customers
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <form action={formAction} className="space-y-6">
