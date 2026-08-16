@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { parseStock } from "@/lib/products";
@@ -33,9 +34,11 @@ function readDraft(text: string): number | null {
  */
 export function StockCell({
   productId,
+  sku,
   stock,
 }: {
   productId: number;
+  sku: string;
   stock: number;
 }) {
   const [pending, startTransition] = React.useTransition();
@@ -68,7 +71,13 @@ export function StockCell({
       const data = new FormData();
       data.set("id", String(productId));
       data.set("stock", String(next));
-      await setProductStockAction(data);
+      try {
+        await setProductStockAction(data);
+        toast.success(`${sku} stock updated to ${next}.`);
+      } catch {
+        toast.error(`Couldn't update ${sku} stock. Try again.`);
+        setDraft(String(stock));
+      }
     });
   }
 

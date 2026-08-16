@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { parsePrice } from "@/lib/products";
@@ -21,9 +22,11 @@ import { setProductPriceAction } from "./actions";
  */
 export function PriceCell({
   productId,
+  sku,
   price,
 }: {
   productId: number;
+  sku: string;
   price: number;
 }) {
   const [pending, startTransition] = React.useTransition();
@@ -56,7 +59,13 @@ export function PriceCell({
       const data = new FormData();
       data.set("id", String(productId));
       data.set("price", String(next));
-      await setProductPriceAction(data);
+      try {
+        await setProductPriceAction(data);
+        toast.success(`${sku} price updated to ${next} Ks.`);
+      } catch {
+        toast.error(`Couldn't update ${sku} price. Try again.`);
+        setDraft(String(price));
+      }
     });
   }
 

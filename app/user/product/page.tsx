@@ -170,13 +170,13 @@ export default async function ProductsPage({
                     </span>
                   </TableCell>
                                     <TableCell>
-                    <StockCell productId={p.id} stock={p.stock} />
+                    <StockCell productId={p.id} sku={p.sku} stock={p.stock} />
                   </TableCell>
                   <TableCell className="font-medium">
                     <Highlight text={p.name} query={searched} />
                   </TableCell>
                   <TableCell>
-                    <PriceCell productId={p.id} price={p.price} />
+                    <PriceCell productId={p.id} sku={p.sku} price={p.price} />
                   </TableCell>
 
                   <TableCell className="numeric text-muted-foreground">
