@@ -15,6 +15,7 @@ import {
 } from "@/lib/orders";
 
 import { BackButton } from "@/components/back-button";
+import { OrderNote } from "./order-note";
 
 
 
@@ -229,6 +230,15 @@ export default async function OrderDetailPage({
           </div>
         </div>
       </article>
+
+      {/* Outside the sheet on purpose: an internal note has no business on
+          something that gets screenshotted to a customer. */}
+      <section className="mt-8">
+        <h2 className={label}>Note</h2>
+        <div className="mt-3 rounded-lg border bg-card px-5 py-4">
+          <OrderNote orderId={order.id} code={order.code} note={order.note} />
+        </div>
+      </section>
 
       {/* Outside the sheet on purpose: who moved the order and when is an
           internal record, so it stays off both the print and a crop of the

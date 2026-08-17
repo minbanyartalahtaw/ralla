@@ -4,6 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowRight01Icon,
   Cancel01Icon,
+  Note01Icon,
   PlusSignIcon,
   Search01Icon,
   TruckDeliveryIcon,
@@ -241,8 +242,24 @@ export default async function OrdersPage({
                   className="data-[state=selected]:bg-primary/10"
                 >
                   <TableCell>
-                    <span className="numeric font-mono text-[11px] font-medium">
-                      {o.code}
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="numeric font-mono text-[11px] font-medium">
+                        {o.code}
+                      </span>
+                      {/* A hover-only hint rather than its own column — most
+                          orders have no note, so widening every row for the
+                          few that do would be waste. */}
+                      {o.note ? (
+                        <HugeiconsIcon
+                          icon={Note01Icon}
+                          size={12}
+                          strokeWidth={2}
+                          className="shrink-0 text-muted-foreground"
+                          aria-label={`Note: ${o.note}`}
+                        >
+                          <title>{o.note}</title>
+                        </HugeiconsIcon>
+                      ) : null}
                     </span>
                   </TableCell>
                   <TableCell className="font-medium">{o.customerName}</TableCell>

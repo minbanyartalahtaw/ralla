@@ -72,6 +72,7 @@ export type NewOrder = {
   address: string;
   paymentMethod: PaymentMethod;
   notifyBySms: boolean;
+  note: string;
   lines: NewOrderLine[];
 };
 
@@ -462,6 +463,7 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
             // New orders always start pending; the caller doesn't get to pick.
             status: "pending",
             notifyBySms: input.notifyBySms,
+            note: input.note,
             items: {
               create: input.lines.map((line) => ({
                 productId: line.productId,
@@ -524,6 +526,22 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
   throw new Error(
     `Could not generate a unique order code after ${CODE_ATTEMPTS} attempts.`,
   );
+}
+
+/**
+ * Overwrites the order's free-text note. Unlike the status history, this is a
+ * single mutable field — the point is "what does staff need to know right
+ * now", not a log of every edit.
+ */
+export async function updateOrderNote(
+  id: number,
+  note: string,
+): Promise<OrderWithItems> {
+  return prisma.order.update({
+    where: { id },
+    data: { note },
+    include: { items: true },
+  });
 }
 
 /** Records the change and appends to the order's history in one transaction. */

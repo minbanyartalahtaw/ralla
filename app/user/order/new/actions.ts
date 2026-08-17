@@ -52,6 +52,7 @@ export async function createOrderAction(
   const address = String(formData.get("address") ?? "").trim();
   const payment = String(formData.get("payment") ?? "");
   const notifyBySms = formData.get("notifyBySms") === "on";
+  const note = String(formData.get("note") ?? "").trim();
 
   const errors: Record<string, string> = {};
 
@@ -85,6 +86,7 @@ export async function createOrderAction(
       address,
       paymentMethod: payment as PaymentMethod,
       notifyBySms,
+      note,
       lines: parsed.lines!,
     });
   } catch (error) {

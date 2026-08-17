@@ -12,6 +12,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { InputGroupAddon, InputGroupText } from "@/components/ui/input-group";
 import type { Customer } from "@/lib/customers";
 
 import { searchCustomersAction } from "./actions";
@@ -20,8 +21,9 @@ const MIN_QUERY = 2;
 const DEBOUNCE_MS = 200;
 
 /**
- * Type-ahead over saved customers. Searching runs on the server so the whole
- * customer table (phone numbers, addresses) never ships to the browser.
+ * Type-ahead over saved customers, by `RLC-` code only. Searching runs on the
+ * server so the whole customer table (phone numbers, addresses) never ships
+ * to the browser.
  */
 export function CustomerSearch({
   onSelect,
@@ -66,7 +68,9 @@ export function CustomerSearch({
       items={visible}
       // The server already filtered; don't filter the results a second time.
       filter={null}
-      itemToStringLabel={(c: Customer) => c.tiktokUsername}
+      // The prefix is a fixed addon on the field, not something typed — the
+      // input's own value is only ever the digits after it.
+      itemToStringLabel={(c: Customer) => c.code.replace(/^RLC-/, "")}
       onInputValueChange={setQuery}
       onValueChange={(c: Customer | null) => {
         if (c) onSelect(c);
@@ -74,13 +78,17 @@ export function CustomerSearch({
     >
       <ComboboxInput
         id="customerSearch"
-        // Short enough to survive a 390px screen — the longer wording was
-        // clipped mid-word, which reads as a broken field.
-        placeholder="Handle or name"
-        autoCapitalize="none"
+        placeholder=""
+        aria-label="Find by customer code, without the RLC- prefix"
+        className="numeric font-mono"
+        autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
-      />
+      >
+        <InputGroupAddon>
+          <InputGroupText className="numeric font-mono">RLC-</InputGroupText>
+        </InputGroupAddon>
+      </ComboboxInput>
       <ComboboxContent>
         <ComboboxEmpty>
           {!active
@@ -98,12 +106,11 @@ export function CustomerSearch({
                 className="mt-0.5 text-muted-foreground"
               />
               <span className="grid min-w-0 gap-0.5">
-                <span className="truncate font-mono text-[11px] font-medium">
-                  @{c.tiktokUsername}
+                <span className="numeric truncate font-mono text-[11px] font-medium">
+                  {c.code}
                 </span>
                 <span className="truncate text-[11px] text-muted-foreground">
-                  {c.name}
-                  {c.tiktokName ? ` · ${c.tiktokName}` : ""} · {c.city}
+                  {c.name} · @{c.tiktokUsername} · {c.city}
                 </span>
               </span>
             </ComboboxItem>

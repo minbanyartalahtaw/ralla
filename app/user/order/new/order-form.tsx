@@ -16,6 +16,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { CITIES, PAYMENT_METHOD, PAYMENT_METHOD_KEYS } from "@/lib/orders";
 
 import type { Customer } from "@/lib/customers";
@@ -152,7 +153,7 @@ export function OrderForm({ products }: { products: Product[] }) {
           <div className="sm:col-span-2">
             {/* Labelled like every other field — it was the only input on the
                 form floating with nothing but a placeholder. */}
-            <Label htmlFor="customerSearch">Find a saved customer</Label>
+            <Label htmlFor="customerSearch">Find by customer code</Label>
             <CustomerSearch onSelect={fillFromCustomer} />
             {linked ? (
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-accent px-3 py-2 text-[11px]">
@@ -162,11 +163,11 @@ export function OrderForm({ products }: { products: Product[] }) {
                   strokeWidth={1.5}
                   className="text-muted-foreground"
                 />
-                <span className="font-mono font-medium">
-                  @{linked.tiktokUsername}
+                <span className="numeric font-mono font-medium">
+                  {linked.code}
                 </span>
-                <span className="numeric font-mono text-muted-foreground">
-                  {linked.id}
+                <span className="font-mono text-muted-foreground">
+                  @{linked.tiktokUsername}
                 </span>
                 <button
                   type="button"
@@ -309,6 +310,12 @@ export function OrderForm({ products }: { products: Product[] }) {
             <FieldError id="payment-error" message={errors.payment} />
           </div>
 
+          <div className="sm:col-span-2">
+            <Label htmlFor="note" optional>
+              Note
+            </Label>
+            <Textarea id="note" name="note" placeholder="" />
+          </div>
         </div>
       </fieldset>
 

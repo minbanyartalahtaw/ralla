@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth";
-import { updateOrderStatus } from "@/lib/order-store";
+import { updateOrderNote, updateOrderStatus } from "@/lib/order-store";
 import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
 
 /**
@@ -31,4 +31,20 @@ export async function updateOrderStatusAction(formData: FormData) {
 
   revalidatePath("/user/order");
   revalidatePath("/user/dashboard");
+}
+
+/** Overwrites an order's free-text note from its detail page. */
+export async function updateOrderNoteAction(formData: FormData) {
+  await requireSession();
+
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    throw new Error("A valid order id is required.");
+  }
+  const code = String(formData.get("code") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+
+  await updateOrderNote(id, note);
+
+  revalidatePath(`/user/order/${code}`);
 }

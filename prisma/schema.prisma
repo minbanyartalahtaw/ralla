@@ -91,6 +91,10 @@ model Order {
   paymentMethod PaymentMethod  @map("payment_method")
   status        DeliveryStatus @default(pending)
   notifyBySms   Boolean        @default(true) @map("notify_by_sms")
+  /// Free-text note staff can leave on the order — special instructions, a
+  /// customer request, anything that isn't a delivery status. Editable any
+  /// time, unlike the snapshot fields above.
+  note          String         @default("")
 
   placedAt  DateTime @default(now()) @map("placed_at") @db.Timestamptz(3)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)

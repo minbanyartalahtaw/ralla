@@ -40,9 +40,9 @@ async function customerIdsByPhone(query: string): Promise<number[]> {
  * Every customer, newest first — or the ones matching `query`.
  *
  * Matches the four things the list actually shows: real name, TikTok handle,
- * `RLC-` code and phone. `tiktokName` is searchable in the order form's
- * type-ahead but not here — the list doesn't show it, so a row matching on it
- * would appear with nothing highlighted and no visible reason for being there.
+ * `RLC-` code and phone. The order form's type-ahead is narrower — see
+ * searchCustomers() — because it needs one unambiguous row, not a browseable
+ * list.
  *
  * A leading `@` comes off before the handle is compared. Handles are stored
  * normalized (lowercase, no `@`) but they are read off the screen with one, so
@@ -103,37 +103,30 @@ export async function findCustomerByTiktok(
 }
 
 /**
- * Type-ahead search. Matches the handle, the TikTok display name, or the real
- * name — staff may remember any of the three. Handle prefix matches rank first,
- * since that's what they usually type.
+ * Type-ahead over saved customers, by `RLC-` code only — never by name.
+ *
+ * A name is common enough that early keystrokes match a dozen unrelated
+ * customers, so staff had to read every row before finding the right one. The
+ * code is what's on the packing slip in front of them and unique by
+ * construction, so it's the only lookup that goes straight to one row.
+ *
+ * Spaces come off anywhere, same as normalizeOrderQuery(): a code copied out
+ * of a chat message arrives with stray whitespace often enough to matter. The
+ * leading `RLC-` is optional for the same reason it's optional there — typing
+ * the prefix the field already implies is wasted keystrokes.
  */
 export async function searchCustomers(
   query: string,
   limit = 8,
 ): Promise<Customer[]> {
-  const q = query.trim().toLowerCase().replace(/^@+/, "");
-  if (q.length < 2) return [];
+  const q = query.replace(/\s+/g, "").replace(/^rlc-?/i, "");
+  if (q.length < 1) return [];
 
-  const matches = await prisma.customer.findMany({
-    where: {
-      OR: [
-        { tiktokUsername: { contains: q } },
-        { tiktokName: { contains: q, mode: "insensitive" } },
-        { name: { contains: q, mode: "insensitive" } },
-      ],
-    },
-    // Over-fetch so the prefix ranking below has something to reorder.
-    take: limit * 3,
-    orderBy: { name: "asc" },
+  return prisma.customer.findMany({
+    where: { code: { contains: q, mode: "insensitive" } },
+    orderBy: { code: "asc" },
+    take: limit,
   });
-
-  return matches
-    .sort((a, b) => {
-      const aStarts = a.tiktokUsername.startsWith(q) ? 0 : 1;
-      const bStarts = b.tiktokUsername.startsWith(q) ? 0 : 1;
-      return aStarts - bStarts;
-    })
-    .slice(0, limit);
 }
 
 export async function createCustomer(input: NewCustomer): Promise<Customer> {
