@@ -17,7 +17,13 @@ export default async function UserLayout({ children }: LayoutProps<"/user">) {
       {/* Read here, not in the sidebar: the sidebar is a Client Component and
           `process.env` is a server-side thing. */}
       <UserSidebar username={adminUsername()} />
-      <SidebarInset>
+      {/* min-w-0: without it, main (a flex item of the sidebar row) takes an
+          automatic min-width equal to its content's min-content size — a wide
+          table (e.g. Orders' min-w-[1240px]) then forces the whole page to
+          overflow horizontally on narrower viewports once the docked sidebar
+          eats into the width, instead of just scrolling inside its own
+          overflow-x-auto container. */}
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-4">
           {/* Button size wins over the icon-sm variant via tailwind-merge, but
               the variant's icon rule is more specific — hence the `!` on the svg. */}
