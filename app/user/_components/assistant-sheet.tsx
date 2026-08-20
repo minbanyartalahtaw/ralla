@@ -66,9 +66,18 @@ export function AssistantSheet() {
   const [error, setError] = React.useState<string | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
 
+  // `open` is a dependency too, not just new messages, so reopening a past
+  // conversation lands on the latest message instead of wherever it was
+  // last scrolled. The rAF defers past the Popup's entrance transition
+  // (Base UI stays mounted the whole time — it toggles the `hidden`
+  // attribute rather than unmounting — but the reopen still repaints the
+  // popup, and scrolling in the same tick as that measures a stale layout).
   React.useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [messages, pending]);
+    const raf = requestAnimationFrame(() => {
+      listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messages, pending, open]);
 
   async function send(overrideText?: string) {
     const text = (overrideText ?? input).trim();
