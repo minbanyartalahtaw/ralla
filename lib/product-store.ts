@@ -69,6 +69,24 @@ export async function setProductActive(
 }
 
 /**
+ * Renames a product's SKU.
+ *
+ * Callers must have already checked findProductBySku for a collision with
+ * another product — the unique index is the backstop, not the check.
+ */
+export async function setProductSku(id: number, sku: string): Promise<Product> {
+  return prisma.product.update({ where: { id }, data: { sku } });
+}
+
+/** Sets the display name shown on the products table and order form picker. */
+export async function setProductName(
+  id: number,
+  name: string,
+): Promise<Product> {
+  return prisma.product.update({ where: { id }, data: { name } });
+}
+
+/**
  * Sets the units on hand to an absolute count.
  *
  * Absolute rather than a delta because this is a stock *correction* — staff

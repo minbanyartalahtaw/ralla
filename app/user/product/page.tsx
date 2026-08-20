@@ -25,11 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listProducts, normalizeProductQuery } from "@/lib/product-store";
-import { formatDate } from "@/lib/orders";
 
 import { ActiveSelect } from "./active-select";
-import { Highlight } from "@/components/highlight";
+import { NameCell } from "./name-cell";
 import { PriceCell } from "./price-cell";
+import { SkuCell } from "./sku-cell";
 import { StockCell } from "./stock-cell";
 
 export const metadata: Metadata = {
@@ -157,7 +157,6 @@ export default async function ProductsPage({
                 <TableHead className={`${th}`}>Stock</TableHead>
                 <TableHead className={th}>Name</TableHead>
                 <TableHead className={`${th} text-right`}>Price</TableHead>
-                <TableHead className={th}>Added</TableHead>
                 <TableHead className={th}>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -165,22 +164,16 @@ export default async function ProductsPage({
               {products.map((p) => (
                 <TableRow key={p.id} className={p.isActive ? "" : "opacity-60"}>
                   <TableCell>
-                    <span className="font-mono text-[11px] font-medium">
-                      {p.sku}
-                    </span>
+                    <SkuCell productId={p.id} sku={p.sku} />
                   </TableCell>
-                                    <TableCell>
+                  <TableCell>
                     <StockCell productId={p.id} sku={p.sku} stock={p.stock} />
                   </TableCell>
-                  <TableCell className="font-medium">
-                    <Highlight text={p.name} query={searched} />
+                  <TableCell>
+                    <NameCell productId={p.id} name={p.name} />
                   </TableCell>
                   <TableCell>
                     <PriceCell productId={p.id} sku={p.sku} price={p.price} />
-                  </TableCell>
-
-                  <TableCell className="numeric text-muted-foreground">
-                    {formatDate(p.createdAt)}
                   </TableCell>
                   <TableCell>
                     <ActiveSelect productId={p.id} isActive={p.isActive} />

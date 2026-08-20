@@ -4,11 +4,14 @@ import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth";
 import {
+  findProductBySku,
   setProductActive,
+  setProductName,
   setProductPrice,
+  setProductSku,
   setProductStock,
 } from "@/lib/product-store";
-import { parsePrice, parseStock } from "@/lib/products";
+import { isValidSku, normalizeSku, parsePrice, parseStock } from "@/lib/products";
 
 function productId(formData: FormData): number {
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
@@ -32,6 +35,60 @@ export async function toggleProductActiveAction(formData: FormData) {
   revalidatePath("/user/product");
   // Changes what the order form's picker can offer.
   revalidatePath("/user/order/new");
+}
+
+/**
+ * Renames a product's SKU from the products table.
+ *
+ * Unlike setProductStockAction and setProductPriceAction, invalid input here
+ * is *expected* — a mistyped SKU or a collision with another product's SKU
+ * are everyday mistakes, not edge cases. Server Actions redact thrown error
+ * messages in production (see node_modules/next/dist/docs/.../error.md), so
+ * this returns the message as data instead of throwing, the same way
+ * createProductAction reports validation errors.
+ */
+export async function setProductSkuAction(
+  formData: FormData,
+): Promise<{ error?: string }> {
+  await requireSession();
+  const id = productId(formData);
+  const sku = normalizeSku(String(formData.get("sku") ?? ""));
+
+  if (!isValidSku(sku)) {
+    return {
+      error:
+        "Letters, numbers and dashes only, 2–24 characters, starting with a letter or number.",
+    };
+  }
+
+  const existing = await findProductBySku(sku);
+  if (existing && existing.id !== id) {
+    return { error: `${sku} is already used by another product.` };
+  }
+
+  await setProductSku(id, sku);
+
+  // The SKU isn't shown on the order form's picker, unlike name and price.
+  revalidatePath("/user/product");
+  return {};
+}
+
+/** Renames a product from the products table. */
+export async function setProductNameAction(
+  formData: FormData,
+): Promise<{ error?: string }> {
+  await requireSession();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    return { error: "Product name is required." };
+  }
+
+  await setProductName(productId(formData), name);
+
+  revalidatePath("/user/product");
+  // The order form's picker labels each product by name.
+  revalidatePath("/user/order/new");
+  return {};
 }
 
 /**
