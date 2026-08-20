@@ -145,110 +145,121 @@ export function AssistantSheet() {
           still caps this at larger viewports since it's a max-width, not a
           width override, so it keeps winning over w-full there. */}
       <SheetContent className="p-0 data-[side=right]:w-full">
-        {/* p-4 instead of the default p-6: the close button is absolutely
-            positioned at top-4/right-4 off SheetContent's edge, not this
-            header's padding box, so matching its 16px offset — plus a size-6
-            badge, the same box size as the icon-sm close button — is what
-            makes the two rows land on the same vertical center. */}
-        <SheetHeader className="border-b p-4">
-          <div className="flex items-center gap-2">
-            <span className="relative flex size-9 shrink-0">
-              <Image src="/ai-logo.webp" alt="" width={36} height={36} className="rounded-sm" />
-              <span className="absolute right-0 bottom-0 size-1.5 rounded-full bg-delivered ring-2 ring-popover" />
-            </span>
-            <SheetTitle>Haikuu</SheetTitle>
-          </div>
-        </SheetHeader>
-
-        <div ref={listRef} className="thin-scrollbar flex flex-1 flex-col overflow-y-auto p-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4" />
+        <div ref={listRef} className="thin-scrollbar flex flex-1 flex-col overflow-y-auto">
+          {/* p-4 instead of the default p-6: the close button is absolutely
+              positioned at top-4/right-4 off SheetContent's edge, not this
+              header's padding box, so matching its 16px offset — plus a
+              size-6 badge, the same box size as the icon-sm close button —
+              is what makes the two rows land on the same vertical center.
+              sticky + a translucent, blurred fill (instead of the opaque
+              popover bg) is what keeps it pinned above the scrolling
+              messages while still reading as glass, not a solid bar. No
+              explicit z-index: sticky alone already outranks the
+              non-positioned message content it scrolls under, and adding
+              one would outrank SheetContent's close button too, since the
+              scroll wrapper here isn't itself a stacking context. */}
+          <SheetHeader className="sticky top-0 border-b border-border/50 bg-popover/40 p-4 supports-backdrop-filter:backdrop-blur-xl">
+            <div className="flex items-center gap-2">
+              <span className="relative flex size-9 shrink-0">
+                <Image src="/ai-logo.webp" alt="" width={36} height={36} className="rounded-sm" />
+                <span className="absolute right-0 bottom-0 size-1.5 rounded-full bg-delivered ring-2 ring-popover" />
               </span>
-              <p className="max-w-[220px] text-muted-foreground">{PLACEHOLDER}</p>
+              <SheetTitle>Haikuu</SheetTitle>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {messages
-                // An assistant message starts empty and fills in as the
-                // stream arrives — nothing to render yet, the typing dots
-                // below stand in for it until the first chunk lands.
-                .filter((message) => message.content !== "")
-                .map((message, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "rounded-2xl px-3 py-2",
-                      message.role === "user"
-                        ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground"
-                        : "w-full rounded-bl-sm bg-muted text-foreground",
-                    )}
-                  >
-                    {message.role === "user" ? (
-                      message.content
-                    ) : (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-                        {message.content}
-                      </ReactMarkdown>
-                    )}
-                  </div>
-                ))}
-              {pending &&
-                (() => {
-                  const last = messages[messages.length - 1];
-                  return last.role === "user" || last.content === "";
-                })() && (
-                  <div className="flex w-fit items-center gap-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-2.5">
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                  </div>
-                )}
-            </div>
-          )}
-          {error && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg bg-pending-soft px-3 py-2 text-pending">
-              <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="mt-0.5 size-3.5 shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-        </div>
+          </SheetHeader>
 
-        <div className="border-t p-3">
-          <div className="no-scrollbar mb-2 flex flex-nowrap gap-1.5 overflow-x-auto">
-            {SUGGESTIONS.map((suggestion) => (
-              <Button
-                key={suggestion}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto shrink-0 rounded-full px-3 py-1"
-                onClick={() => void send(suggestion)}
-                disabled={pending}
-              >
-                {suggestion}
-              </Button>
-            ))}
+          <div className="flex flex-1 flex-col p-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4" />
+                </span>
+                <p className="max-w-[220px] text-muted-foreground">{PLACEHOLDER}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages
+                  // An assistant message starts empty and fills in as the
+                  // stream arrives — nothing to render yet, the typing dots
+                  // below stand in for it until the first chunk lands.
+                  .filter((message) => message.content !== "")
+                  .map((message, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "rounded-2xl px-3 py-2",
+                        message.role === "user"
+                          ? "ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground"
+                          : "w-full rounded-bl-sm bg-muted text-foreground",
+                      )}
+                    >
+                      {message.role === "user" ? (
+                        message.content
+                      ) : (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+                          {message.content}
+                        </ReactMarkdown>
+                      )}
+                    </div>
+                  ))}
+                {pending &&
+                  (() => {
+                    const last = messages[messages.length - 1];
+                    return last.role === "user" || last.content === "";
+                  })() && (
+                    <div className="flex w-fit items-center gap-1 rounded-2xl rounded-bl-sm bg-muted px-3 py-2.5">
+                      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+                    </div>
+                  )}
+              </div>
+            )}
+            {error && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-pending-soft px-3 py-2 text-pending">
+                <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="mt-0.5 size-3.5 shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 rounded-xl border border-input bg-input/20 p-1.5 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 dark:bg-input/30">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={PLACEHOLDER}
-              className="min-h-8 flex-1 resize-none rounded-none border-0 bg-transparent px-1.5 py-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
-              disabled={pending}
-            />
-            <Button
-              size="icon-sm"
-              onClick={() => void send()}
-              disabled={pending || !input.trim()}
-              aria-label="Send"
-            >
-              <HugeiconsIcon icon={SentIcon} strokeWidth={2} />
-            </Button>
+          {/* sticky bottom-0, same glass treatment (and same no-z-index
+              reasoning) as the header above. */}
+          <div className="sticky bottom-0 bg-popover/40 p-3 shadow-[0_-8px_16px_-12px_rgba(0,0,0,0.35)] supports-backdrop-filter:backdrop-blur-xl">
+            <div className="no-scrollbar mb-2 flex flex-nowrap gap-1.5 overflow-x-auto">
+              {SUGGESTIONS.map((suggestion) => (
+                <Button
+                  key={suggestion}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-auto shrink-0 rounded-full px-3 py-1"
+                  onClick={() => void send(suggestion)}
+                  disabled={pending}
+                >
+                  {suggestion}
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1 rounded-xl border border-input bg-input/20 p-1.5 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 dark:bg-input/30">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={PLACEHOLDER}
+                className="min-h-8 flex-1 resize-none rounded-none border-0 bg-transparent px-1.5 py-1 shadow-none focus-visible:ring-0 dark:bg-transparent"
+                disabled={pending}
+              />
+              <Button
+                size="icon-sm"
+                onClick={() => void send()}
+                disabled={pending || !input.trim()}
+                aria-label="Send"
+              >
+                <HugeiconsIcon icon={SentIcon} strokeWidth={2} />
+              </Button>
+            </div>
           </div>
         </div>
       </SheetContent>
