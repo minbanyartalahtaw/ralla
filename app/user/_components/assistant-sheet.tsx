@@ -5,6 +5,7 @@ import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { MultiplicationSignCircleIcon, SentIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,13 +38,25 @@ const MARKDOWN_COMPONENTS: Components = {
   pre: ({ ...props }) => (
     <pre className="mb-2 overflow-x-auto rounded-md bg-black/10 p-2 last:mb-0 dark:bg-white/10" {...props} />
   ),
+  // Tool results (list_products) come back as a GFM table — remarkGfm below
+  // is what turns the `|` syntax into actual <table> markup in the first
+  // place, this just keeps it readable at bubble width.
+  table: ({ ...props }) => (
+    <div className="mb-2 overflow-x-auto last:mb-0">
+      <table className="w-full border-collapse text-left" {...props} />
+    </div>
+  ),
+  thead: ({ ...props }) => <thead className="border-b border-black/10 dark:border-white/10" {...props} />,
+  th: ({ ...props }) => <th className="px-2 py-1 font-semibold" {...props} />,
+  td: ({ ...props }) => <td className="px-2 py-1" {...props} />,
+  tr: ({ ...props }) => <tr className="border-b border-black/5 last:border-0 dark:border-white/5" {...props} />,
 };
 
 const PLACEHOLDER = "Ask anything ...";
 
 // Fixed wording, not AI-generated — quick-send shortcuts for the questions
 // staff ask most, shown above the input.
-const SUGGESTIONS = ["Product တွေပြပေး","Customer ရှာပေး","Order ရှာပေးပါ","ဘာတွေကူညီပေးနိုင်လည်း"];
+const SUGGESTIONS = ["ပစ္စည်း Stock တွေပြပေး","Order ရှာပေးပါ","ဘာတွေကူညီပေးနိုင်လည်း"];
 
 export function AssistantSheet() {
   const [open, setOpen] = React.useState(false);
@@ -166,7 +179,7 @@ export function AssistantSheet() {
                     {message.role === "user" ? (
                       message.content
                     ) : (
-                      <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                         {message.content}
                       </ReactMarkdown>
                     )}

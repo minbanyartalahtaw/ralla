@@ -1,41 +1,16 @@
 /**
- * The assistant's tool surface: four read-only lookups, nothing that
+ * The assistant's tool surface: two read-only lookups, nothing that
  * mutates data. See lib/ai/assistant.ts for the loop that calls these.
+ *
+ * No customer lookup, by request — the assistant doesn't search customers.
  */
 
 import type { FunctionDeclaration } from "@google/genai";
 
-import { getCustomerByCode } from "@/lib/customer-store";
 import { getOrderByCode } from "@/lib/order-store";
 import { findProductBySku, listProducts } from "@/lib/product-store";
 
 export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
-  {
-    name: "lookup_customer",
-    description:
-      "Look up a customer by their RLC- customer code (e.g. RLC-1015). Returns name, TikTok handle, phone, city, address and notes.",
-    parametersJsonSchema: {
-      type: "object",
-      properties: {
-        code: { type: "string", description: "Customer code, e.g. RLC-1015" },
-      },
-      required: ["code"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "lookup_stock",
-    description:
-      "Look up current stock for a product by name or exact SKU. Returns matching products with their current stock counts.",
-    parametersJsonSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Product name or SKU to search for" },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-  },
   {
     name: "lookup_order",
     description:
@@ -52,38 +27,24 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
   {
     name: "list_products",
     description:
-      "List every product's name and SKU. Useful for browsing the catalog or resolving which product someone means before checking its stock.",
+      "List products as a Name/SKU/Stock table. Omit `query` to list the whole catalog; pass a product name or exact SKU to check stock for one product.",
     parametersJsonSchema: {
       type: "object",
-      properties: {},
+      properties: {
+        query: {
+          type: "string",
+          description: "Optional product name or exact SKU to filter to",
+        },
+      },
       required: [],
       additionalProperties: false,
     },
   },
 ];
 
+// Only bites when a query narrows the catalog down to a search-result-shaped
+// list — browsing the whole catalog with no query returns every row.
 const MAX_STOCK_MATCHES = 10;
-
-async function lookupCustomer(code: string): Promise<string> {
-  const customer = await getCustomerByCode(code);
-  if (!customer) return `No customer found with code ${code}.`;
-
-  const { code: customerCode, name, tiktokUsername, phone, city, address, note } = customer;
-  return JSON.stringify({ code: customerCode, name, tiktokUsername, phone, city, address, note });
-}
-
-async function lookupStock(query: string): Promise<string> {
-  const exact = await findProductBySku(query);
-  const matches = exact ? [exact] : await listProducts(query);
-
-  if (matches.length === 0) return `No products matching '${query}'.`;
-
-  return JSON.stringify(
-    matches
-      .slice(0, MAX_STOCK_MATCHES)
-      .map(({ name, sku, stock, isActive }) => ({ name, sku, stock, isActive })),
-  );
-}
 
 async function lookupOrder(code: string): Promise<string> {
   const order = await getOrderByCode(code);
@@ -104,25 +65,33 @@ async function lookupOrder(code: string): Promise<string> {
   });
 }
 
-async function listAllProducts(): Promise<string> {
-  const products = await listProducts();
-  if (products.length === 0) return "No products in the catalog.";
+async function listProductsTable(query?: string): Promise<string> {
+  const q = query?.trim();
 
-  return JSON.stringify(products.map(({ name, sku }) => ({ name, sku })));
+  let products;
+  if (q) {
+    const exact = await findProductBySku(q);
+    products = exact ? [exact] : (await listProducts(q)).slice(0, MAX_STOCK_MATCHES);
+  } else {
+    products = await listProducts();
+  }
+
+  if (products.length === 0) {
+    return q ? `No products matching '${q}'.` : "No products in the catalog.";
+  }
+
+  const rows = products.map(({ name, sku, stock }) => `| ${name} | ${sku} | ${stock} |`);
+  return ["| Name | SKU | Stock |", "| --- | --- | --- |", ...rows].join("\n");
 }
 
 export async function runTool(name: string, input: unknown): Promise<string> {
   const args = input as Record<string, unknown>;
 
   switch (name) {
-    case "lookup_customer":
-      return lookupCustomer(String(args.code ?? ""));
-    case "lookup_stock":
-      return lookupStock(String(args.query ?? ""));
     case "lookup_order":
       return lookupOrder(String(args.code ?? ""));
     case "list_products":
-      return listAllProducts();
+      return listProductsTable(args.query ? String(args.query) : undefined);
     default:
       return `Unknown tool: ${name}`;
   }
