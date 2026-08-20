@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { adminUsername } from "@/lib/session";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
+import { AssistantSheet } from "./_components/assistant-sheet";
 import { UserBreadcrumb } from "./_components/user-breadcrumb";
 import { UserSidebar } from "./_components/user-sidebar";
 
@@ -32,9 +33,7 @@ export default async function UserLayout({ children }: LayoutProps<"/user">) {
               their own BackButton, which is the actual way back. */}
           <UserBreadcrumb />
           <div className="ml-auto flex items-center gap-3">
-            <span className="flex size-7 items-center justify-center rounded-full  text-[20px] font-semibold text-primary-foreground">
-              🌸
-            </span>
+            <AssistantSheet />
           </div>
         </header>
 

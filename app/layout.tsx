@@ -29,6 +29,12 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#a53860",
+  // Default mobile behavior overlays the keyboard on top of the page and
+  // leaves the layout viewport full-height, so a fixed-position sheet (like
+  // the assistant) gets scrolled to keep the focused textarea visible and
+  // its header ends up dragged off-screen. Resizing the viewport itself
+  // means 100dvh/inset-y-0 shrink to fit above the keyboard instead.
+  interactiveWidget: "resizes-content",
 };
 
 
