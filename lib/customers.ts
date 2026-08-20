@@ -17,10 +17,14 @@ import type { CustomerModel } from "@/generated/prisma/models";
 /** The row shape Prisma returns. Aliased so app code reads naturally. */
 export type Customer = CustomerModel;
 
-/** Everything the create form supplies. The rest is assigned by the database. */
+/**
+ * Everything the create form supplies. The rest is assigned by the database.
+ * `avatar` is excluded too — it's never part of the Details form, only set
+ * through the avatar picker on the customer's own page. See updateCustomerAvatar().
+ */
 export type NewCustomer = Omit<
   Customer,
-  "id" | "code" | "createdAt" | "updatedAt"
+  "id" | "code" | "createdAt" | "updatedAt" | "avatar"
 >;
 
 /**

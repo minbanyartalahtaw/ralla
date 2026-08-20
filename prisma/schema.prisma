@@ -55,6 +55,13 @@ model Customer {
   address        String
   note           String @default("")
 
+  /// Avatar catalogue id like `royal-f2`, picked on the customer's own page.
+  /// The tier prefix is the point: it says what kind of customer this is, so
+  /// the picture is readable at a glance and avatarTier() can recover it
+  /// without a second column. See lib/avatar.ts for the catalogue.
+  /// Null means none was chosen — render the initials monogram instead.
+  avatar String?
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

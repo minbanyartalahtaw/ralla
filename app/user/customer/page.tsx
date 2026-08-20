@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
+import { CustomerAvatar } from "@/components/customer-avatar";
 import { Highlight } from "@/components/highlight";
 import {
   InputGroup,
@@ -19,7 +20,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { listCustomers, normalizeCustomerQuery } from "@/lib/customer-store";
-import { formatTiktokHandle, initials } from "@/lib/customers";
+import { formatTiktokHandle } from "@/lib/customers";
 import { formatDate } from "@/lib/orders";
 
 export const metadata: Metadata = {
@@ -154,12 +155,10 @@ export default async function CustomersPage({
                   href={`/user/customer/${c.code}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-accent"
                 >
-                  <span
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
-                    aria-hidden
-                  >
-                    {initials(c.name)}
-                  </span>
+                  <CustomerAvatar
+                    customer={c}
+                    className="size-9 text-[11px]"
+                  />
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium">

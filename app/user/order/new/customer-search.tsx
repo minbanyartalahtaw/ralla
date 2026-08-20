@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { TiktokIcon } from "@hugeicons/core-free-icons";
 
 import {
   Combobox,
@@ -12,6 +10,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { CustomerAvatar } from "@/components/customer-avatar";
 import { InputGroupAddon, InputGroupText } from "@/components/ui/input-group";
 import type { Customer } from "@/lib/customers";
 
@@ -100,11 +99,7 @@ export function CustomerSearch({
         <ComboboxList>
           {visible.map((c) => (
             <ComboboxItem key={c.id} value={c} className="items-start py-1.5">
-              <HugeiconsIcon
-                icon={TiktokIcon}
-                strokeWidth={1.5}
-                className="mt-0.5 text-muted-foreground"
-              />
+              <CustomerAvatar customer={c} className="mt-0.5 size-6 text-[9px]" />
               <span className="grid min-w-0 gap-0.5">
                 <span className="numeric truncate font-mono text-[11px] font-medium">
                   {c.code}

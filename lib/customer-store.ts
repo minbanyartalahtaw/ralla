@@ -149,3 +149,15 @@ export async function updateCustomer(
 ): Promise<Customer> {
   return prisma.customer.update({ where: { id }, data: input });
 }
+
+/**
+ * Sets or clears the customer's DiceBear "Moods" seed — the avatar picker's
+ * own save path, separate from updateCustomer() because it isn't part of the
+ * Details form.
+ */
+export async function updateCustomerAvatar(
+  id: number,
+  avatar: string | null,
+): Promise<Customer> {
+  return prisma.customer.update({ where: { id }, data: { avatar } });
+}

@@ -6,6 +6,7 @@ import { getCustomerByCode } from "@/lib/customer-store";
 import { listOrdersByCustomer } from "@/lib/order-store";
 import { formatDate, formatKyat, type OrderWithItems } from "@/lib/orders";
 import { BackButton } from "@/components/back-button";
+import { AvatarPicker } from "./avatar-picker";
 import { DetailsCard } from "./details-card";
 
 /**
@@ -26,20 +27,6 @@ export async function generateMetadata({
 }
 
 const label = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
-
-/**
- * Up to two initials for the avatar. Staff recognise a customer by face and
- * handle, and a record has neither — a monogram at least gives the page
- * something to be remembered by, and the same one every time.
- */
-function initials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  return words
-    .slice(0, 2)
-    .map((word) => word[0].toUpperCase())
-    .join("");
-}
 
 function Stat({ title, value }: { title: string; value: string }) {
   return (
@@ -79,12 +66,7 @@ export default async function CustomerDetailPage({
 
       <section className="mt-3 overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="flex items-start gap-4 p-5">
-          <span
-            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-            aria-hidden
-          >
-            {initials(customer.name)}
-          </span>
+          <AvatarPicker customer={customer} />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold">
               {customer.name}

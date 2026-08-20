@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, TiktokIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { CustomerAvatar } from "@/components/customer-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CITIES, PAYMENT_METHOD, PAYMENT_METHOD_KEYS } from "@/lib/orders";
@@ -157,12 +158,7 @@ export function OrderForm({ products }: { products: Product[] }) {
             <CustomerSearch onSelect={fillFromCustomer} />
             {linked ? (
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-accent px-3 py-2 text-[11px]">
-                <HugeiconsIcon
-                  icon={TiktokIcon}
-                  size={12}
-                  strokeWidth={1.5}
-                  className="text-muted-foreground"
-                />
+                <CustomerAvatar customer={linked} className="size-5 text-[9px]" />
                 <span className="numeric font-mono font-medium">
                   {linked.code}
                 </span>

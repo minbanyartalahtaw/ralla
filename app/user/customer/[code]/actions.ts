@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
+import { parseAvatarId } from "@/lib/avatar";
 import { requireSession } from "@/lib/auth";
 import {
   findCustomerByTiktok,
   getCustomer,
   updateCustomer,
+  updateCustomerAvatar,
 } from "@/lib/customer-store";
 import {
   isValidTiktokUsername,
@@ -96,4 +98,36 @@ export async function updateCustomerAction(
   revalidatePath("/user/customer");
 
   return { errors: {}, ok: true };
+}
+
+/**
+ * Sets or clears the avatar picker's chosen catalogue id. Split out from
+ * updateCustomerAction because the picker isn't part of the Details form —
+ * it saves the moment one is picked, not on a form submit.
+ *
+ * The id is checked against the catalogue rather than just length-limited: it
+ * carries the customer's tier, so an unrecognised value would render as the
+ * initials monogram and silently lose that meaning.
+ */
+export async function updateCustomerAvatarAction(
+  id: number,
+  avatar: string | null,
+): Promise<{ ok: boolean; message?: string }> {
+  await requireSession();
+
+  if (avatar !== null && !parseAvatarId(avatar)) {
+    return { ok: false, message: "Unknown avatar." };
+  }
+
+  const customer = await getCustomer(id);
+  if (!customer) {
+    return { ok: false, message: "Customer not found." };
+  }
+
+  await updateCustomerAvatar(id, avatar);
+
+  revalidatePath(`/user/customer/${customer.code}`);
+  revalidatePath("/user/customer");
+
+  return { ok: true };
 }
