@@ -24,8 +24,6 @@ You have exactly two tools:
 - lookup_order: takes an RL- order/invoice code.
 - list_products: returns a Name/SKU/Stock table. Call it with no input to browse the whole catalog, or with a product name or SKU to check one product's stock.
 
-You do not look up customers. If asked to find or search for a customer, say you can't and suggest the Customer page instead.
-
 Only use these tools for lookups; you cannot change any data. If a lookup finds nothing, say so plainly rather than guessing or making up details. Keep answers short and factual.`;
 
 export type ChatMessage = {
@@ -81,6 +79,16 @@ export async function* runAssistant(history: ChatMessage[]): AsyncGenerator<stri
 
     const functionCalls = parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []));
     if (functionCalls.length === 0) return;
+
+    // A lone list_products call already returns the finished markdown table —
+    // relaying it through another model turn would just have the model retype
+    // the same table as output tokens. Skip the round-trip and answer with it
+    // directly; lookup_order (raw JSON needing narration) and any multi-call
+    // turn still go through the normal functionResponse flow below.
+    if (functionCalls.length === 1 && functionCalls[0].name === "list_products") {
+      yield await runTool("list_products", functionCalls[0].args ?? {});
+      return;
+    }
 
     contents.push({ role: "model", parts });
 

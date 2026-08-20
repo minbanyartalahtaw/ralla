@@ -42,8 +42,10 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
   },
 ];
 
-// Only bites when a query narrows the catalog down to a search-result-shaped
-// list — browsing the whole catalog with no query returns every row.
+// Only bites on a narrowed search — browsing the whole catalog with no
+// query returns every row uncapped. That's safe now that list_products
+// answers straight from the tool (see the fast path in assistant.ts): the
+// table never goes through the model, so its size no longer costs tokens.
 const MAX_STOCK_MATCHES = 10;
 
 async function lookupOrder(code: string): Promise<string> {
@@ -77,7 +79,7 @@ async function listProductsTable(query?: string): Promise<string> {
   }
 
   if (products.length === 0) {
-    return q ? `No products matching '${q}'.` : "No products in the catalog.";
+    return q ? `'${q}' နဲ့ကိုက်ညီတဲ့ ပစ္စည်း မတွေ့ပါ။` : "ပစ္စည်းစာရင်းမှာ ဘာမှမရှိသေးပါ။";
   }
 
   const rows = products.map(({ name, sku, stock }) => `| ${name} | ${sku} | ${stock} |`);
