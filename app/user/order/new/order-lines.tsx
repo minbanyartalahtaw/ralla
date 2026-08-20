@@ -204,6 +204,17 @@ export function OrderLines({
                 // Selected state shows the name alone; the price is already in
                 // its own column by then.
                 itemToStringLabel={(p: Product) => p.name}
+                // The default filter only matches itemToStringLabel — name
+                // alone — so a typed SKU found nothing even though it's
+                // right there on every row.
+                filter={(p: Product, query: string) => {
+                  const q = query.trim().toLowerCase();
+                  if (q === "") return true;
+                  return (
+                    p.name.toLowerCase().includes(q) ||
+                    p.sku.toLowerCase().includes(q)
+                  );
+                }}
               >
                 <ComboboxInput
                   id={`${fieldId}-line-${index}-product`}
@@ -233,6 +244,9 @@ export function OrderLines({
                       <ComboboxItem key={p.id} value={p} className="pr-8">
                         <span className="flex min-w-0 flex-1 items-baseline gap-3">
                           <span className="truncate">{p.name}</span>
+                          <span className="numeric shrink-0 font-mono text-[11px] text-muted-foreground">
+                            {p.sku}
+                          </span>
                           <span
                             className={`ml-auto shrink-0 text-[11px] ${
                               p.stock === 0

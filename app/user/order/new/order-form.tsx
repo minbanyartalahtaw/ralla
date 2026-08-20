@@ -154,7 +154,9 @@ export function OrderForm({ products }: { products: Product[] }) {
           <div className="sm:col-span-2">
             {/* Labelled like every other field — it was the only input on the
                 form floating with nothing but a placeholder. */}
-            <Label htmlFor="customerSearch">Find by customer code</Label>
+            <Label htmlFor="customerSearch">
+              Find by customer
+            </Label>
             <CustomerSearch onSelect={fillFromCustomer} />
             {linked ? (
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-accent px-3 py-2 text-[11px]">

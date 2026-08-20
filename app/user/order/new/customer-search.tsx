@@ -11,7 +11,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { CustomerAvatar } from "@/components/customer-avatar";
-import { InputGroupAddon, InputGroupText } from "@/components/ui/input-group";
+import { Highlight } from "@/components/highlight";
 import type { Customer } from "@/lib/customers";
 
 import { searchCustomersAction } from "./actions";
@@ -20,9 +20,9 @@ const MIN_QUERY = 2;
 const DEBOUNCE_MS = 200;
 
 /**
- * Type-ahead over saved customers, by `RLC-` code only. Searching runs on the
- * server so the whole customer table (phone numbers, addresses) never ships
- * to the browser.
+ * Type-ahead over saved customers, by `RLC-` code, phone, or name. Searching
+ * runs on the server so the whole customer table (phone numbers, addresses)
+ * never ships to the browser.
  */
 export function CustomerSearch({
   onSelect,
@@ -67,9 +67,7 @@ export function CustomerSearch({
       items={visible}
       // The server already filtered; don't filter the results a second time.
       filter={null}
-      // The prefix is a fixed addon on the field, not something typed — the
-      // input's own value is only ever the digits after it.
-      itemToStringLabel={(c: Customer) => c.code.replace(/^RLC-/, "")}
+      itemToStringLabel={(c: Customer) => c.code}
       onInputValueChange={setQuery}
       onValueChange={(c: Customer | null) => {
         if (c) onSelect(c);
@@ -77,17 +75,11 @@ export function CustomerSearch({
     >
       <ComboboxInput
         id="customerSearch"
-        placeholder=""
-        aria-label="Find by customer code, without the RLC- prefix"
-        className="numeric font-mono"
-        autoCapitalize="characters"
+        placeholder="RLC, phone, or name"
+        aria-label="Find a customer by RLC, phone, or name"
         autoCorrect="off"
         spellCheck={false}
-      >
-        <InputGroupAddon>
-          <InputGroupText className="numeric font-mono">RLC-</InputGroupText>
-        </InputGroupAddon>
-      </ComboboxInput>
+      />
       <ComboboxContent>
         <ComboboxEmpty>
           {!active
@@ -101,11 +93,17 @@ export function CustomerSearch({
             <ComboboxItem key={c.id} value={c} className="items-start py-1.5">
               <CustomerAvatar customer={c} className="mt-0.5 size-6 text-[9px]" />
               <span className="grid min-w-0 gap-0.5">
-                <span className="numeric truncate font-mono text-[11px] font-medium">
-                  {c.code}
+                <span className="truncate text-[11px] font-medium">
+                  <Highlight text={c.name} query={trimmed} />
                 </span>
-                <span className="truncate text-[11px] text-muted-foreground">
-                  {c.name} · @{c.tiktokUsername} · {c.city}
+                <span className="truncate font-mono text-[11px] text-muted-foreground">
+                  <span className="numeric">
+                    <Highlight text={c.code} query={trimmed} />
+                  </span>
+                  <span className="mx-1.5 text-muted-foreground/50">·</span>
+                  <span className="numeric">
+                    <Highlight text={c.phone} query={trimmed} digits />
+                  </span>
                 </span>
               </span>
             </ComboboxItem>

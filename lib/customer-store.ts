@@ -103,27 +103,37 @@ export async function findCustomerByTiktok(
 }
 
 /**
- * Type-ahead over saved customers, by `RLC-` code only — never by name.
+ * Type-ahead over saved customers, by `RLC-` code, phone, or name — the three
+ * things staff have on hand when a customer calls in without the code.
  *
- * A name is common enough that early keystrokes match a dozen unrelated
- * customers, so staff had to read every row before finding the right one. The
- * code is what's on the packing slip in front of them and unique by
- * construction, so it's the only lookup that goes straight to one row.
- *
- * Spaces come off anywhere, same as normalizeOrderQuery(): a code copied out
- * of a chat message arrives with stray whitespace often enough to matter. The
- * leading `RLC-` is optional for the same reason it's optional there — typing
- * the prefix the field already implies is wasted keystrokes.
+ * Spaces come off the code the same way normalizeOrderQuery() does it: a code
+ * copied out of a chat message arrives with stray whitespace often enough to
+ * matter, and the leading `RLC-` is optional for the same reason it's
+ * optional there. Phone reuses customerIdsByPhone() so `09777444622` and
+ * `09 770 112 233` both find the same row. Name is a plain substring match —
+ * noisier than the other two, but staff typing a name here already have
+ * nothing better to go on.
  */
 export async function searchCustomers(
   query: string,
   limit = 8,
 ): Promise<Customer[]> {
-  const q = query.replace(/\s+/g, "").replace(/^rlc-?/i, "");
-  if (q.length < 1) return [];
+  const trimmed = query.trim();
+  if (trimmed.length < 1) return [];
+
+  const codeQuery = trimmed.replace(/\s+/g, "").replace(/^rlc-?/i, "");
+  const phoneMatches = await customerIdsByPhone(trimmed);
 
   return prisma.customer.findMany({
-    where: { code: { contains: q, mode: "insensitive" } },
+    where: {
+      OR: [
+        { name: { contains: trimmed, mode: "insensitive" } },
+        ...(codeQuery.length > 0
+          ? [{ code: { contains: codeQuery, mode: "insensitive" as const } }]
+          : []),
+        ...(phoneMatches.length > 0 ? [{ id: { in: phoneMatches } }] : []),
+      ],
+    },
     orderBy: { code: "asc" },
     take: limit,
   });
