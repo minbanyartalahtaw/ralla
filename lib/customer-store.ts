@@ -132,3 +132,20 @@ export async function searchCustomers(
 export async function createCustomer(input: NewCustomer): Promise<Customer> {
   return prisma.customer.create({ data: input });
 }
+
+/**
+ * Updates a customer's own record — the detail page's Edit action.
+ *
+ * `id` only, never `code` or `tiktokUsername`: both can appear in the input
+ * (a rename is exactly what this saves) but neither is stable enough to key
+ * the WHERE clause on. This never touches past orders — see the domain note
+ * in CLAUDE.md: an order snapshots the customer's details at the time it was
+ * placed, so moving house today can't rewrite where last month's parcel
+ * actually went.
+ */
+export async function updateCustomer(
+  id: number,
+  input: NewCustomer,
+): Promise<Customer> {
+  return prisma.customer.update({ where: { id }, data: input });
+}
