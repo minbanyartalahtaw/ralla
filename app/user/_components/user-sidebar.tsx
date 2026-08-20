@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -15,6 +16,16 @@ import {
 
 import { signOutAction } from "@/app/login/actions";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +69,7 @@ const ORDER_NAV = [
 
 export function UserSidebar({ username }: { username: string }) {
   const pathname = usePathname();
+  const [signOutOpen, setSignOutOpen] = useState(false);
 
   return (
     <Sidebar>
@@ -165,17 +177,39 @@ export function UserSidebar({ username }: { username: string }) {
                 <DropdownMenuItem
                   variant="destructive"
                   className="w-full"
-                  // Menu items render a div by default. Saying so keeps Base UI
-                  // from bolting its own Enter/Space handling onto an element
-                  // that already submits on both.
-                  nativeButton
-                  render={<button type="submit" form="sign-out" />}
+                  onClick={() => setSignOutOpen(true)}
                 >
                   <HugeiconsIcon icon={Logout01Icon} strokeWidth={1.5} />
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <AlertDialog open={signOutOpen} onOpenChange={setSignOutOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You&apos;ll need the shared username and password to sign
+                    back in.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    // Base UI's Button renders a native <button> by default, but
+                    // `render` swaps in one that submits the hidden sign-out
+                    // form by id — `nativeButton` keeps its Enter/Space
+                    // handling from doubling up with that element's own.
+                    nativeButton
+                    render={<button type="submit" form="sign-out" />}
+                  >
+                    Sign out
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
