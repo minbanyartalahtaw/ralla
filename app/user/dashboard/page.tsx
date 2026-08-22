@@ -67,19 +67,15 @@ export default async function DashboardPage() {
 
   // The trend window can be shorter than TREND_DAYS on a young shop, so the
   // caption reports what was actually plotted rather than what was asked for.
-  const windowNote = `Last ${trend.length} days · excludes cancelled`;
+  const windowNote = `${trend.length} ရက်အတွင်း`;
   const sold = trend.some((d) => d.orders > 0);
 
   return (
     <div className="space-y-6">
-      <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
-        Dashboard
-      </h1>
-
       {/* Two per row only from `lg`: below that a 30-day axis squeezed into half
           a phone is unreadable. */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Revenue" note={windowNote}>
+        <Panel title="ရောင်းရငွေ" note={windowNote}>
           {sold ? (
             <RevenueChart data={trend} />
           ) : (
@@ -87,11 +83,11 @@ export default async function DashboardPage() {
           )}
         </Panel>
 
-        <Panel title="Orders per day" note={windowNote}>
+        <Panel title="အော်ဒါ" note={windowNote}>
           {sold ? <OrdersChart data={trend} /> : <Empty label="No orders yet" />}
         </Panel>
 
-        <Panel title="Best sellers" note="Units sold · all time">
+        <Panel title="Best sellers" note="all time">
           {topProducts.length > 0 ? (
             <BreakdownChart data={topProducts} unit="units" />
           ) : (
@@ -99,7 +95,7 @@ export default async function DashboardPage() {
           )}
         </Panel>
 
-        <Panel title="Orders by city" note="Where parcels went · all time">
+        <Panel title="မြို့အလိုက် အော်ဒါ" note="all time">
           {cities.length > 0 ? (
             <BreakdownChart data={cities} unit="orders" />
           ) : (
