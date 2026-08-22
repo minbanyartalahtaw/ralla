@@ -5,7 +5,7 @@ import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import type { DeliveryStatus } from "@/lib/orders";
 
-import { ordersHref } from "./orders-href";
+import { ordersHref, type OrdersView } from "./orders-href";
 
 /**
  * Previous / Next for the orders list, with the range it is showing.
@@ -22,11 +22,13 @@ export function Pager({
   pageCount,
   query,
   status,
+  view,
 }: {
   page: number;
   pageCount: number;
   query: string;
   status?: DeliveryStatus;
+  view?: OrdersView["view"];
 }) {
   // One page of results needs no controls; "Page 1 of 1" is noise.
   if (pageCount <= 1) return null;
@@ -55,7 +57,7 @@ export function Pager({
         variant="outline"
         size="sm"
         nativeButton={false}
-        render={<Link href={ordersHref({ query, status, page: to })} />}
+        render={<Link href={ordersHref({ query, status, page: to, view })} />}
       >
         {back ? arrow : null}
         {label}

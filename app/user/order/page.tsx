@@ -37,6 +37,8 @@ import { Pager } from "./pager";
 import { SelectableBody } from "./selectable-body";
 import { StatusSelect } from "./status-select";
 import { StatusTabs } from "./status-tabs";
+import { OrderCards } from "./order-cards";
+import { ViewSwitch } from "./view-switch";
 import {
   DELIVERY_STATUS,
   PAYMENT_METHOD,
@@ -55,12 +57,14 @@ const th = "text-[11px] font-semibold tracking-wide text-muted-foreground upperc
 export default async function OrdersPage({
   searchParams,
 }: PageProps<"/user/order">) {
-  const { q, status: rawStatus, page: rawPage, created } = await searchParams;
+  const { q, status: rawStatus, page: rawPage, created, view: rawView } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const createdCode = typeof created === "string" ? created : undefined;
   const status = parseDeliveryStatus(
     typeof rawStatus === "string" ? rawStatus : undefined,
   );
+  // Cards are the default; only `?view=table` selects the table.
+  const view = rawView === "table" ? "table" : "card";
   // A junk page — `?page=abc`, `?page=-3` — reads as the first page rather than
   // an error. listOrdersPage() clamps the upper end against the real count.
   const requestedPage = Number.parseInt(String(rawPage ?? "1"), 10);
@@ -132,9 +136,10 @@ export default async function OrdersPage({
                   size="icon-xs"
                   variant="ghost"
                   nativeButton={false}
-                  // Keeps the status tab you were on: clearing the search
-                  // narrows by one thing less, it doesn't reset everything.
-                  render={<Link href={ordersHref({ status })} />}
+                  // Keeps the status tab and layout you were on: clearing the
+                  // search narrows by one thing less, it doesn't reset
+                  // everything.
+                  render={<Link href={ordersHref({ status, view })} />}
                   aria-label="Clear search"
                 >
                   <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
@@ -149,6 +154,11 @@ export default async function OrdersPage({
           {/* Searching inside a status tab keeps you in it. Without this the
               form would submit `q` alone and quietly drop back to All. */}
           {status ? <input type="hidden" name="status" value={status} /> : null}
+          {/* Same reasoning for the layout: searching from the table view
+              shouldn't silently land back on cards. */}
+          {view === "table" ? (
+            <input type="hidden" name="view" value="table" />
+          ) : null}
         </form>
 
         <Button nativeButton={false} render={<Link href="/user/order/new" />}>
@@ -157,8 +167,11 @@ export default async function OrdersPage({
         </Button>
       </div>
 
-      <div className="mt-4">
-        <StatusTabs active={status} counts={counts} query={query} />
+      <div className="mt-4 flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <StatusTabs active={status} counts={counts} query={query} view={view} />
+        </div>
+        <ViewSwitch query={query} status={status} page={page} view={view} />
       </div>
 
       <div className="mt-4 rounded-lg border bg-card">
@@ -213,7 +226,7 @@ export default async function OrdersPage({
               </>
             )}
           </div>
-        ) : (
+        ) : view === "table" ? (
 
           <Table className="min-w-[1240px]">
             <TableHeader>
@@ -321,6 +334,10 @@ export default async function OrdersPage({
               ))}
             </SelectableBody>
           </Table>
+        ) : (
+          <div className="p-3">
+            <OrderCards orders={orders} />
+          </div>
         )}
 
         {/* Inside the card and below the table, so it reads as the foot of the
@@ -330,6 +347,7 @@ export default async function OrdersPage({
           pageCount={pageCount}
           query={query}
           status={status}
+          view={view}
         />
       </div>
     </div>

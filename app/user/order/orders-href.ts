@@ -4,6 +4,8 @@ export type OrdersView = {
   query?: string;
   status?: DeliveryStatus;
   page?: number;
+  /** `table` for the table layout; omitted (or `card`) means cards, the default. */
+  view?: "card" | "table";
 };
 
 /**
@@ -16,11 +18,14 @@ export type OrdersView = {
  * narrowed to the three that are pending. Page 1 is left out of the query
  * string entirely so the default view has a clean URL.
  */
-export function ordersHref({ query, status, page }: OrdersView): string {
+export function ordersHref({ query, status, page, view }: OrdersView): string {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (status) params.set("status", status);
   if (page && page > 1) params.set("page", String(page));
+  // Cards are the default, so `view=card` is left out of the URL for the same
+  // clean-URL reason as page 1 above.
+  if (view === "table") params.set("view", "table");
 
   const qs = params.toString();
   return qs ? `/user/order?${qs}` : "/user/order";
