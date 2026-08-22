@@ -158,33 +158,44 @@
   --cancelled-soft: var(--sand-100);
 }
 
-.dark {
-  --background: #150609;
-  --foreground: #f7e9ec;
+/* Dark mode surfaces are warm charcoal, NOT tinted berry.
 
-  --card: #200a11;
-  --card-foreground: #f7e9ec;
-  --popover: #200a11;
-  --popover-foreground: #f7e9ec;
+   Light mode gets away with brand-tinted surfaces because --sand-* is a barely
+   saturated near-white. Dark mode does not: the same tint at low lightness put
+   hue 340° on the background, the cards, the muted fills and the borders at
+   once, so the whole app read as a pink field — and --primary, being berry
+   itself, had nothing to stand out against.
+
+   So the surfaces here carry only a trace of warmth (they stay on the red side
+   of neutral, never cold slate) and the brand lives where it can be seen: the
+   primary button, the focus ring, the sidebar's pink text, the charts. */
+.dark {
+  --background: #121011;
+  --foreground: #f2eeef;
+
+  --card: #1a1719;
+  --card-foreground: #f2eeef;
+  --popover: #1a1719;
+  --popover-foreground: #f2eeef;
 
   /* Lifted a step — on a dark surface, deepening a color reads as disabled.
      #b8436a still clears 4.7:1 with white text. */
   --primary: var(--ralla-500);
   --primary-foreground: #ffffff;
 
-  --secondary: #2c0f19;
-  --secondary-foreground: #f7e9ec;
+  --secondary: #232022;
+  --secondary-foreground: #f2eeef;
 
-  --muted: #2c0f19;
-  --muted-foreground: #c3a4ad;
+  --muted: #232022;
+  --muted-foreground: #a8a0a3; /* 7.3:1 on --background, 6.9:1 on --card */
 
-  --accent: #2f0f1a;
-  --accent-foreground: #f7e9ec;
+  --accent: #262223;
+  --accent-foreground: #f2eeef;
 
   --destructive: #f87171;
 
-  --border: #3a1620;
-  --input: #43202a;
+  --border: #2e2a2c;
+  --input: #383335;
   --ring: var(--ralla-200);
 
   --chart-1: var(--ralla-400);
@@ -193,7 +204,10 @@
   --chart-4: #60a5fa;
   --chart-5: #4ade80;
 
-  --sidebar: #200a11;
+  /* The sidebar is the same slab as a card here; --ralla-100 text is what
+     carries the brand, and pink type on charcoal reads as an accent where a
+     pink field read as noise. */
+  --sidebar: #1a1719;
   --sidebar-foreground: var(--ralla-100);
   --sidebar-primary: var(--ralla-300);
   --sidebar-primary-foreground: var(--ralla-900);
@@ -210,8 +224,8 @@
   --shipped-soft: #3a2a06;
   --delivered: #86efac;
   --delivered-soft: #0a2e18;
-  --cancelled: #9c7c86;
-  --cancelled-soft: #2c0f19;
+  --cancelled: #9d9599; /* 5.6:1 on --cancelled-soft */
+  --cancelled-soft: #232022;
 }
 
 @theme inline {
