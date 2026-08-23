@@ -1,21 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Cancel01Icon,
-  Package02Icon,
-  PlusSignIcon,
-  Search01Icon,
-} from "@hugeicons/core-free-icons";
+import { Package02Icon, PlusSignIcon, Search01Icon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import {
   Table,
   TableBody,
@@ -29,8 +18,11 @@ import { listProducts, normalizeProductQuery } from "@/lib/product-store";
 import { ActiveSelect } from "./active-select";
 import { NameCell } from "./name-cell";
 import { PriceCell } from "./price-cell";
+import { ProductContacts } from "./product-contacts";
+import { ProductSearch } from "./product-search";
 import { SkuCell } from "./sku-cell";
 import { StockCell } from "./stock-cell";
+import { ViewSwitch } from "./view-switch";
 
 export const metadata: Metadata = {
   title: "Products — RALLA",
@@ -41,8 +33,10 @@ const th = "text-[11px] font-semibold tracking-wide text-muted-foreground upperc
 export default async function ProductsPage({
   searchParams,
 }: PageProps<"/user/product">) {
-  const { q, created } = await searchParams;
+  const { q, view: rawView, created } = await searchParams;
   const query = typeof q === "string" ? q : "";
+  // Contact cards are the default; only `?view=table` selects the table.
+  const view = rawView === "table" ? "table" : "contact";
   const products = await listProducts(query);
   const createdCode = typeof created === "string" ? created : undefined;
 
@@ -63,45 +57,9 @@ export default async function ProductsPage({
       />
 
       <div className="flex items-center gap-3">
-        {/* A plain GET form, so the search lands in the URL and the filtered
-            list can be bookmarked and reloaded. No client JavaScript. */}
-        <form method="get" className="min-w-0 flex-1">
-          <InputGroup className="max-w-xs">
-            <InputGroupInput
-              type="search"
-              name="q"
-              // See the orders list: the field is uncontrolled and Base UI
-              // reads `defaultValue` once, so a changed query needs a new
-              // element rather than a new default on the old one.
-              key={query}
-              defaultValue={query}
-              placeholder="Product name"
-              aria-label="Search products by name"
-              autoCorrect="off"
-              // The browser's own clear button only empties the field — it
-              // never submits, so the list stayed filtered against a box that
-              // looked empty. Hidden in favour of the link below.
-              className="[&::-webkit-search-cancel-button]:appearance-none"
-            />
-            <InputGroupAddon align="inline-end">
-              {searching ? (
-                <InputGroupButton
-                  size="icon-xs"
-                  variant="ghost"
-                  nativeButton={false}
-                  render={<Link href="/user/product" />}
-                  aria-label="Clear search"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
-                </InputGroupButton>
-              ) : null}
-              <InputGroupButton type="submit" size="sm" variant="ghost">
-                <HugeiconsIcon icon={Search01Icon} strokeWidth={1.5} />
-                Search
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        </form>
+        <div className="min-w-0 flex-1">
+          <ProductSearch query={query} view={view} />
+        </div>
 
         <Button nativeButton={false} render={<Link href="/user/product/new" />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
@@ -109,7 +67,22 @@ export default async function ProductsPage({
         </Button>
       </div>
 
-      <div className="mt-4 rounded-lg border bg-card">
+      <div className="mt-4 flex items-center gap-3">
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+          {products.length} {products.length === 1 ? "product" : "products"}
+        </p>
+        <ViewSwitch query={query} view={view} />
+      </div>
+
+      {/* The table view clips to the radius: its header row is a square block of
+          `bg-muted` that otherwise pokes out past the rounded corners. The
+          contact view must NOT clip — `overflow-hidden` would make this a
+          scroll container and its sticky letter headers would stop sticking. */}
+      <div
+        className={`mt-4 rounded-lg bg-card ${
+          view === "contact" ? "" : "overflow-hidden border"
+        }`}
+      >
         {products.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
             <span className="text-muted-foreground">
@@ -149,6 +122,8 @@ export default async function ProductsPage({
               </>
             )}
           </div>
+        ) : view === "contact" ? (
+          <ProductContacts products={products} />
         ) : (
           <Table className="min-w-[860px]">
             <TableHeader>
