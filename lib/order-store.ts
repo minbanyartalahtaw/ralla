@@ -392,7 +392,8 @@ export async function getOrder(id: number): Promise<OrderWithItems | null> {
  *
  * The status history comes along because it is the point of the detail page:
  * the list already shows where an order *is*, only this page says how it got
- * there. Oldest first, so it reads as a timeline.
+ * there. Newest first, so the current status is the one staff see without
+ * scrolling.
  */
 export async function getOrderByCode(
   code: string,
@@ -401,7 +402,7 @@ export async function getOrderByCode(
     where: { code: code.trim().toUpperCase() },
     include: {
       items: true,
-      statusEvents: { orderBy: { changedAt: "asc" } },
+      statusEvents: { orderBy: { changedAt: "desc" } },
     },
   });
 }

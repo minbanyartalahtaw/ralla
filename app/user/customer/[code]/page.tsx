@@ -26,13 +26,13 @@ export async function generateMetadata({
   };
 }
 
-const label = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
+const label = "text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase";
 
 function Stat({ title, value }: { title: string; value: string }) {
   return (
-    <div className="bg-card px-3 py-3 sm:px-4">
+    <div className="px-3 py-4 text-center sm:px-4 sm:py-5">
       <dt className={label}>{title}</dt>
-      <dd className="numeric mt-1 text-xs font-semibold sm:text-sm">{value}</dd>
+      <dd className="numeric mt-1.5 text-sm font-semibold tracking-tight text-foreground sm:text-[15px]">{value}</dd>
     </div>
   );
 }
@@ -61,19 +61,19 @@ export default async function CustomerDetailPage({
   const lastOrder = counted[0];
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-[640px]">
       <BackButton fallback="/user/customer" />
 
-      <section className="mt-3 overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="flex items-start gap-4 p-5">
+      <section className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-4 px-5 py-6 sm:gap-5 sm:px-8 sm:py-7">
           <AvatarPicker customer={customer} />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold">
+            <h1 className="truncate text-[17px] font-semibold tracking-tight text-foreground sm:text-lg">
               {customer.name}
             </h1>
             {/* The permanent identity — a handle can be renamed, this can't, so
                 it's the one field that stays out of the editable list below. */}
-            <p className="numeric mt-1 font-mono text-[11px] text-muted-foreground">
+            <p className="numeric mt-1 inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-mono text-[11px] font-medium leading-none text-muted-foreground">
               {customer.code}
             </p>
           </div>
@@ -81,7 +81,7 @@ export default async function CustomerDetailPage({
 
         {/* Three across even on a phone — the values are short, and stacking
             them would push the one number staff came for below the fold. */}
-        <dl className="grid grid-cols-3 gap-px border-t bg-border">
+        <dl className="grid grid-cols-3 divide-x divide-border border-t bg-muted/20">
           <Stat title="Orders" value={String(counted.length)} />
           <Stat title="Spent" value={formatKyat(totalSpent)} />
           <Stat

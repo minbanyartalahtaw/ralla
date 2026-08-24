@@ -29,7 +29,7 @@ import { CITIES, formatDate } from "@/lib/orders";
 import { updateCustomerAction } from "./actions";
 
 const label =
-  "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
+  "text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase";
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
@@ -63,7 +63,7 @@ function FieldLabel({
   );
 }
 
-/** Label left, value right — read-mode's own layout, unrelated to the form's grid. */
+/** Mobile stacks (label above value) for scanability; desktop keeps label left / value right. */
 function Row({
   title,
   children,
@@ -72,9 +72,9 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 px-4 py-2.5">
+    <div className="flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
       <dt className={`${label} shrink-0`}>{title}</dt>
-      <dd className="text-right text-xs">{children}</dd>
+      <dd className="text-sm leading-relaxed text-foreground sm:text-right sm:text-[13px]">{children}</dd>
     </div>
   );
 }
@@ -129,22 +129,24 @@ export function DetailsCard({ customer }: { customer: Customer }) {
 
   return (
     <section className="mt-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-1">
         <h2 className={label}>Details</h2>
         {!editing ? (
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
+            size="sm"
             aria-label="Edit details"
             onClick={startEdit}
+            className="h-7 gap-1.5 rounded-full px-3 text-xs"
           >
-            <HugeiconsIcon icon={PencilEdit01Icon} size={16} strokeWidth={1.5} />
+            <HugeiconsIcon icon={PencilEdit01Icon} size={13} strokeWidth={2} />
+            Edit
           </Button>
         ) : null}
       </div>
 
       {!editing ? (
-        <dl className="mt-2 divide-y rounded-lg border bg-card">
+        <dl className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border bg-card shadow-sm">
           <Row title="Name">
             <span className="font-medium">{customer.name}</span>
           </Row>
@@ -153,35 +155,39 @@ export function DetailsCard({ customer }: { customer: Customer }) {
               href={`https://www.tiktok.com/@${customer.tiktokUsername}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-[11px] hover:underline"
+              className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-mono text-xs font-medium hover:bg-accent"
             >
-              <HugeiconsIcon icon={TiktokIcon} size={11} strokeWidth={2} />
+              <HugeiconsIcon icon={TiktokIcon} size={12} strokeWidth={2} />
               {formatTiktokHandle(customer.tiktokUsername)}
             </a>
           </Row>
           <Row title="TikTok name">
             {customer.tiktokName || (
-              <span className="text-muted-foreground/50">—</span>
+              <span className="text-muted-foreground/40">—</span>
             )}
           </Row>
           <Row title="Mobile">
-            <span className="numeric">{customer.phone}</span>
+            <span className="numeric font-medium">{customer.phone}</span>
           </Row>
           <Row title="City">{customer.city}</Row>
-          <Row title="Address">{customer.address}</Row>
+          <Row title="Address">
+            <span className="sm:inline-block sm:max-w-[22ch] sm:text-right">{customer.address}</span>
+          </Row>
           <Row title="Note">
-            {customer.note || (
-              <span className="text-muted-foreground/50">—</span>
+            {customer.note ? (
+              <span className="sm:inline-block sm:max-w-[22ch] sm:text-right">{customer.note}</span>
+            ) : (
+              <span className="text-muted-foreground/40">—</span>
             )}
           </Row>
           <Row title="Added">
-            <span className="numeric">{formatDate(customer.createdAt)}</span>
+            <span className="numeric text-muted-foreground">{formatDate(customer.createdAt)}</span>
           </Row>
         </dl>
       ) : (
         <form
           onSubmit={handleSubmit}
-          className="mt-2 space-y-4 rounded-lg border bg-card p-4"
+          className="mt-3 space-y-4 rounded-2xl border bg-card p-5 shadow-sm sm:p-6"
         >
           <input type="hidden" name="id" value={customer.id} />
 

@@ -87,7 +87,7 @@ export function AvatarPicker({ customer }: { customer: Customer }) {
       >
         <CustomerAvatar
           customer={{ name: customer.name, avatar }}
-          className="size-12 text-sm"
+          className="size-14 text-[15px] shadow-sm ring-2 ring-border/50"
         />
         <span className="absolute -right-0.5 -bottom-0.5 flex size-5 items-center justify-center rounded-full bg-card text-muted-foreground ring-2 ring-card transition-colors group-hover/avatar:text-foreground">
           <HugeiconsIcon icon={PencilEdit01Icon} size={11} strokeWidth={2} />
