@@ -151,14 +151,14 @@ export function AssistantSheet() {
               header's padding box, so matching its 16px offset — plus a
               size-6 badge, the same box size as the icon-sm close button —
               is what makes the two rows land on the same vertical center.
-              sticky + a translucent, blurred fill (instead of the opaque
-              popover bg) is what keeps it pinned above the scrolling
-              messages while still reading as glass, not a solid bar. No
-              explicit z-index: sticky alone already outranks the
-              non-positioned message content it scrolls under, and adding
-              one would outrank SheetContent's close button too, since the
-              scroll wrapper here isn't itself a stacking context. */}
-          <SheetHeader className="sticky top-0 border-b border-border/50 bg-popover/40 p-4 supports-backdrop-filter:backdrop-blur-xl">
+              sticky keeps it pinned above the scrolling messages; the fill
+              is the opaque popover bg so the rows underneath don't show
+              through as they scroll past. No explicit z-index: sticky alone
+              already outranks the non-positioned message content it scrolls
+              under, and adding one would outrank SheetContent's close
+              button too, since the scroll wrapper here isn't itself a
+              stacking context. */}
+          <SheetHeader className="sticky top-0 border-b border-border/50 bg-popover p-4">
             <div className="flex items-center gap-2">
               <span className="relative flex size-9 shrink-0">
                 <Image src="/ai-logo.webp" alt="" width={36} height={36} className="rounded-sm" />
