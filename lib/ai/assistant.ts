@@ -8,13 +8,24 @@ import { GoogleGenAI, type Content, type Part } from "@google/genai";
 
 import { ASSISTANT_TOOLS, runTool } from "@/lib/ai/tools";
 
-// "-latest" alias so this always resolves to Google's current flash-tier
-// model instead of a pinned id going stale.
-const MODEL = "gemini-flash-latest";
+// Pinned, not the "-latest" alias: that alias hot-swaps onto whatever
+// flash-tier model Google ships next — including preview releases — and
+// carries its price with it. Two read-only lookups and short factual
+// answers don't need the flash tier, so this stays on the lite one.
+const MODEL = "gemini-3.1-flash-lite";
 
 // Confusing-loop safety valve, not an expected path — each tool call is one
-// lookup, so a real question resolves in one or two iterations.
-const MAX_ITERATIONS = 6;
+// lookup, so a real question resolves in one or two iterations. Kept tight
+// because every extra pass re-sends the whole conversation.
+const MAX_ITERATIONS = 3;
+
+// Older turns are dropped before the request. A lookup is self-contained —
+// where RL-260804TXI has got to doesn't depend on what was asked twenty
+// questions ago — so carrying the whole transcript would grow the input on
+// every turn and buy nothing. Even, so a trimmed history still starts on a
+// user turn rather than a dangling model reply.
+const MAX_HISTORY = 8;
+
 
 const SYSTEM_PROMPT = `You are Haikuu, the admin assistant for RALLA, a cosmetics store. You're a girl — use she/her for yourself if asked. Staff use you to look up records they'd otherwise search for by hand.
 
@@ -53,7 +64,7 @@ function toContent(message: ChatMessage): Content {
  * whichever turn ends up being the final, tool-free answer.
  */
 export async function* runAssistant(history: ChatMessage[]): AsyncGenerator<string> {
-  const contents: Content[] = history.map(toContent);
+  const contents: Content[] = history.slice(-MAX_HISTORY).map(toContent);
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const stream = await getClient().models.generateContentStream({
