@@ -15,10 +15,10 @@ export default async function NewOrderPage() {
   const products = await listActiveProducts();
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-center gap-3">
-        <BackButton fallback="/user/order" />
-        <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
+    <div className="mx-auto max-w-[640px]">
+      <BackButton fallback="/user/order" />
+      <div className="mt-4">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
           New order
         </h1>
       </div>

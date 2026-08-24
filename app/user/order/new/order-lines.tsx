@@ -182,13 +182,13 @@ export function OrderLines({
   return (
     <div>
       {/* Shown on mobile too: with the fields on one row, these labels are the
-          only thing naming them. */}
+           only thing naming them. */}
       <div
-        className={`${columns} px-1 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase`}
+        className={`${columns} px-1 pb-2 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase`}
       >
         <span>Product</span>
-        <span>Qty</span>
-        <span>Unit price</span>
+        <span className="text-center sm:text-left">Qty</span>
+        <span className="text-right sm:text-left">Price</span>
         <span className="sr-only">Remove</span>
       </div>
 
@@ -316,16 +316,16 @@ export function OrderLines({
         })}
       </ul>
 
-      <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
-        <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-4">
+        <Button type="button" variant="outline" size="sm" onClick={onAdd} className="rounded-full">
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           Add line
         </Button>
-        <div className="text-right">
-          <span className="text-[11px] tracking-wide text-muted-foreground uppercase">
+        <div className="rounded-xl bg-muted/40 px-4 py-2 text-right sm:bg-transparent sm:p-0">
+          <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
             Total
           </span>
-          <p className="numeric text-sm font-semibold">{formatKyat(total)}</p>
+          <p className="numeric text-base font-bold tracking-tight text-foreground">{formatKyat(total)}</p>
         </div>
       </div>
 

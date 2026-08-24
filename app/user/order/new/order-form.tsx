@@ -50,11 +50,11 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 /** Numbered so the form has a shape you can hold in your head. */
 function SectionHeader({ step, title }: { step: number; title: string }) {
   return (
-    <div className="flex items-center gap-2.5 border-b px-5 py-3">
-      <span className="numeric flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+    <div className="flex items-center gap-3 border-b bg-muted/20 px-5 py-4 sm:px-6">
+      <span className="numeric flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
         {step}
       </span>
-      <h2 className="text-[13px] font-semibold">{title}</h2>
+      <h2 className="text-sm font-semibold tracking-tight text-foreground">{title}</h2>
     </div>
   );
 }
@@ -69,10 +69,10 @@ function Label({
   optional?: boolean;
 }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1 block text-[11px] font-medium">
+    <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-medium text-foreground">
       {children}
       {optional ? (
-        <span className="ml-1 font-normal text-muted-foreground">optional</span>
+        <span className="ml-1.5 font-normal text-muted-foreground">optional</span>
       ) : null}
     </label>
   );
@@ -126,29 +126,29 @@ export function OrderForm({ products }: { products: Product[] }) {
   const shortfalls = stockShortfalls(lines, products);
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} className="space-y-5">
       {/* The one place the form raises its voice: a hairline rule and the
-          warning icon, no filled panel. The fields say what to fix. */}
+           warning icon, no filled panel. The fields say what to fix. */}
       {state.message ? (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-md border border-destructive/30 px-3.5 py-2.5 text-destructive"
+          className="flex items-center gap-2.5 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-destructive"
         >
           <HugeiconsIcon
             icon={Alert02Icon}
-            size={13}
+            size={14}
             strokeWidth={2}
             className="shrink-0"
           />
-          <p className="text-[11px] font-medium">{state.message}</p>
+          <p className="text-xs font-medium">{state.message}</p>
         </div>
       ) : null}
 
       {/* ── Customer ───────────────────────────────────────────────────── */}
-      <fieldset className="rounded-lg border bg-card">
+      <fieldset className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <legend className="sr-only">Customer</legend>
         <SectionHeader step={1} title="Customer" />
-        <div className="grid gap-4 p-5 sm:grid-cols-2">
+        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
           <input type="hidden" name="customerId" value={linked?.id ?? ""} />
 
           <div className="sm:col-span-2">
@@ -159,9 +159,9 @@ export function OrderForm({ products }: { products: Product[] }) {
             </Label>
             <CustomerSearch onSelect={fillFromCustomer} />
             {linked ? (
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-accent px-3 py-2 text-[11px]">
-                <CustomerAvatar customer={linked} className="size-5 text-[9px]" />
-                <span className="numeric font-mono font-medium">
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5 text-xs">
+                <CustomerAvatar customer={linked} className="size-6 text-[9px]" />
+                <span className="numeric font-mono font-medium text-foreground">
                   {linked.code}
                 </span>
                 <span className="font-mono text-muted-foreground">
@@ -170,7 +170,7 @@ export function OrderForm({ products }: { products: Product[] }) {
                 <button
                   type="button"
                   onClick={clearLink}
-                  className="ml-auto font-medium text-primary hover:underline"
+                  className="ml-auto rounded-full bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm ring-1 ring-border hover:text-foreground"
                 >
                   Clear
                 </button>
@@ -248,10 +248,10 @@ export function OrderForm({ products }: { products: Product[] }) {
       </fieldset>
 
       {/* ── Items ──────────────────────────────────────────────────────── */}
-      <fieldset className="rounded-lg border bg-card">
+      <fieldset className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <legend className="sr-only">Items</legend>
         <SectionHeader step={2} title="Items & payment" />
-        <div className="grid gap-4 p-5 sm:grid-cols-2">
+        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
           <div className="sm:col-span-2">
             {/* The lines live in React state, so hidden inputs carry them into
                 the FormData the Server Action receives. Order is preserved,
@@ -287,12 +287,12 @@ export function OrderForm({ products }: { products: Product[] }) {
           </div>
 
           <div className="sm:col-span-2">
-            <span className="mb-1 block text-[11px] font-medium">Payment</span>
-            <div className="flex flex-wrap gap-4">
+            <span className="mb-2 block text-xs font-medium text-foreground">Payment</span>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {PAYMENT_METHOD_KEYS.filter((p) => p !== "refunded").map((p) => (
                 <label
                   key={p}
-                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-xl border bg-card px-3.5 py-2.5 text-sm font-medium has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 has-[input:checked]:text-foreground text-muted-foreground transition-colors has-[input:checked]:ring-1 has-[input:checked]:ring-primary/20"
                 >
                   <input
                     type="radio"
@@ -318,26 +318,26 @@ export function OrderForm({ products }: { products: Product[] }) {
       </fieldset>
 
       {/* Reversed on a phone so Save sits above Cancel and under the thumb;
-          from `sm` it goes back to the usual right-aligned pair. */}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
+           from `sm` it goes back to the usual right-aligned pair. */}
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         {/* Says why the button is dead — the offending line is marked too, but
             that can be scrolled off screen by the time you reach the button. */}
         {shortfalls.length > 0 ? (
-          <p className="text-[11px] text-destructive sm:mr-auto">
+          <p className="text-xs font-medium text-destructive sm:mr-auto">
             Not enough stock to save this order.
           </p>
         ) : null}
         <Button
-          variant="ghost"
+          variant="outline"
           nativeButton={false}
-          className="h-9 w-full sm:h-7 sm:w-auto"
+          className="h-10 w-full sm:h-9 sm:w-auto"
           render={<Link href="/user/order" />}
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          className="h-9 w-full sm:h-7 sm:w-auto"
+          className="h-10 w-full sm:h-9 sm:w-auto shadow-sm"
           disabled={pending || shortfalls.length > 0}
         >
           {pending ? "Saving…" : "Save order"}
