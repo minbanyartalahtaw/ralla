@@ -55,8 +55,18 @@ const MARKDOWN_COMPONENTS: Components = {
 const PLACEHOLDER = "Ask anything ...";
 
 // Fixed wording, not AI-generated — quick-send shortcuts for the questions
-// staff ask most, shown above the input.
-const SUGGESTIONS = ["ပစ္စည်း Stock တွေပြပေး","Order ရှာပေးပါ","ဘာတွေကူညီပေးနိုင်လည်း"];
+// staff ask most, shown above the input. Ordered by how often a shift starts
+// with them, because the row scrolls sideways and only the first two or three
+// are on screen. The last is the odd one out: it asks what Haikuu can do at
+// all, which is only ever useful once.
+const SUGGESTIONS = [
+  "ဒီနေ့ အခြေအနေ",
+  "ဘာတွေ ကုန်တော့မလဲ",
+  "ကြာနေတဲ့ Order တွေ",
+  "ပစ္စည်း Stock တွေပြပေး",
+  "Order ရှာပေးပါ",
+  "ဘာတွေကူညီပေးနိုင်လည်း",
+];
 
 export function AssistantSheet() {
   const [open, setOpen] = React.useState(false);

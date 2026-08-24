@@ -43,6 +43,24 @@ export async function listProducts(query?: string): Promise<Product[]> {
   });
 }
 
+/** At or below this many units, a product counts as running out. */
+export const LOW_STOCK_THRESHOLD = 5;
+
+/**
+ * Active products running out, emptiest first.
+ *
+ * Active only, unlike listProducts(): a discontinued line sitting at zero is
+ * not a restock decision, it is just discontinued.
+ */
+export async function listLowStockProducts(
+  threshold = LOW_STOCK_THRESHOLD,
+): Promise<Product[]> {
+  return prisma.product.findMany({
+    where: { isActive: true, stock: { lte: threshold } },
+    orderBy: [{ stock: "asc" }, { name: "asc" }],
+  });
+}
+
 export async function getProduct(id: number): Promise<Product | null> {
   return prisma.product.findUnique({ where: { id } });
 }

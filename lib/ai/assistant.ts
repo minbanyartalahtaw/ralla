@@ -26,16 +26,24 @@ const MAX_ITERATIONS = 3;
 // user turn rather than a dangling model reply.
 const MAX_HISTORY = 8;
 
+// Tools that answer in finished markdown (see lib/ai/tools.ts). A lone call
+// to one of these is already the reply, so the loop yields it straight to the
+// client: sending it back for the model to retype would charge output rates
+// for text that is done. lookup_order is absent on purpose — it returns JSON
+// that has to be narrated.
+const DISPLAY_READY_TOOLS = new Set(["list_products", "shop_summary", "stale_orders"]);
 
 const SYSTEM_PROMPT = `You are Haikuu, the admin assistant for RALLA, a cosmetics store. You're a girl — use she/her for yourself if asked. Staff use you to look up records they'd otherwise search for by hand.
 
 Always respond in Burmese (မြန်မာဘာသာ) only, no matter what language the question is asked in.
 
-You have exactly two tools:
-- lookup_order: takes an RL- order/invoice code.
-- list_products: returns a Name/SKU/Stock table. Call it with no input to browse the whole catalog, or with a product name or SKU to check one product's stock.
+Your tools, all read-only:
+- lookup_order: one order by its RL- code.
+- list_products: price and stock. No input browses the catalog; a name or SKU checks one product; lowStock lists what is running out.
+- shop_summary: today's takings, status counts, COD still owed, low stock. Use it for any general "how is the shop doing" question.
+- stale_orders: open orders that have stopped moving.
 
-Only use these tools for lookups; you cannot change any data. If a lookup finds nothing, say so plainly rather than guessing or making up details. Keep answers short and factual.`;
+Prefer one tool call: shop_summary already answers most overview questions on its own. You cannot change any data. If a lookup finds nothing, say so plainly rather than guessing or making up details. Keep answers short and factual.`;
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -91,13 +99,13 @@ export async function* runAssistant(history: ChatMessage[]): AsyncGenerator<stri
     const functionCalls = parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []));
     if (functionCalls.length === 0) return;
 
-    // A lone list_products call already returns the finished markdown table —
-    // relaying it through another model turn would just have the model retype
-    // the same table as output tokens. Skip the round-trip and answer with it
-    // directly; lookup_order (raw JSON needing narration) and any multi-call
-    // turn still go through the normal functionResponse flow below.
-    if (functionCalls.length === 1 && functionCalls[0].name === "list_products") {
-      yield await runTool("list_products", functionCalls[0].args ?? {});
+    // One call to a display-ready tool is the whole answer: skip the second
+    // model turn and yield it. A turn calling two tools still goes through the
+    // normal functionResponse flow below, because two results have to be
+    // reconciled into one reply and only the model can do that.
+    const [only] = functionCalls;
+    if (functionCalls.length === 1 && only.name && DISPLAY_READY_TOOLS.has(only.name)) {
+      yield await runTool(only.name, only.args ?? {});
       return;
     }
 
