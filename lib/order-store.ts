@@ -142,7 +142,7 @@ export async function listOrders(
 }
 
 /** Rows per page on the orders list. */
-export const ORDERS_PER_PAGE = 9;
+export const ORDERS_PER_PAGE = 12;
 
 export type OrderPage = {
   orders: OrderWithItems[];
