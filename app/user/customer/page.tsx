@@ -20,7 +20,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { listCustomers, normalizeCustomerQuery } from "@/lib/customer-store";
-import { formatTiktokHandle } from "@/lib/customers";
 import { formatDate } from "@/lib/orders";
 
 export const metadata: Metadata = {
@@ -37,9 +36,6 @@ export default async function CustomersPage({
 
   const searched = normalizeCustomerQuery(query);
   const searching = searched !== "";
-  // The handle is stored without one, so the `@` has to come off before it can
-  // be matched against what's on screen.
-  const handleQuery = searched.replace(/^@+/, "");
 
   return (
     <div>
@@ -66,8 +62,8 @@ export default async function CustomersPage({
               // element rather than a new default on the old one.
               key={query}
               defaultValue={query}
-              placeholder="Name, @handle, RLC- code or phone"
-              aria-label="Search customers by name, TikTok handle, customer code or phone"
+              placeholder="Name, RLC- code or phone"
+              aria-label="Search customers by name, customer code or phone"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
@@ -165,13 +161,6 @@ export default async function CustomersPage({
                       <Highlight text={c.name} query={searched} />
                     </p>
                     <p className="truncate font-mono text-[11px] text-muted-foreground">
-                      {/* Matched without the `@`, which is display only — the
-                          handle is stored bare. */}
-                      <Highlight
-                        text={formatTiktokHandle(c.tiktokUsername)}
-                        query={handleQuery}
-                      />
-                      <span className="mx-1.5 text-muted-foreground/50">·</span>
                       <span className="numeric">
                         <Highlight text={c.code} query={searched} />
                       </span>

@@ -39,14 +39,10 @@ async function customerIdsByPhone(query: string): Promise<number[]> {
 /**
  * Every customer, newest first — or the ones matching `query`.
  *
- * Matches the four things the list actually shows: real name, TikTok handle,
- * `RLC-` code and phone. The order form's type-ahead is narrower — see
- * searchCustomers() — because it needs one unambiguous row, not a browseable
- * list.
- *
- * A leading `@` comes off before the handle is compared. Handles are stored
- * normalized (lowercase, no `@`) but they are read off the screen with one, so
- * that is how they get typed back in.
+ * Matches the three things the list actually shows: real name, `RLC-` code and
+ * phone. The order form's type-ahead searches the same three — see
+ * searchCustomers() — but caps the result count, because it needs one
+ * unambiguous row rather than a browseable list.
  */
 export async function listCustomers(query?: string): Promise<Customer[]> {
   const q = normalizeCustomerQuery(query);
@@ -62,7 +58,6 @@ export async function listCustomers(query?: string): Promise<Customer[]> {
     where: {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
-        { tiktokUsername: { contains: q.replace(/^@+/, ""), mode: "insensitive" } },
         // `RLC-1013` typed as `1013`, `rlc-1013` or in full all reach the row.
         { code: { contains: q, mode: "insensitive" } },
         { id: { in: phoneMatches } },
@@ -79,8 +74,8 @@ export async function getCustomer(id: number): Promise<Customer | null> {
 /**
  * Lookup by the human-facing `RLC-` code, which is what the detail URL carries.
  * The code is immutable and already on screen, so a copied link stays readable
- * and keeps pointing at the same person — neither `id` (never displayed) nor
- * the TikTok handle (renameable) can promise both.
+ * and keeps pointing at the same person — `id`, never displayed, can't promise
+ * the first half of that.
  *
  * Uppercased first: codes are stored uppercase, but a URL comes back lowercased
  * often enough — hand-typed, or flattened by a chat client — that a case-exact
@@ -90,16 +85,6 @@ export async function getCustomerByCode(code: string): Promise<Customer | null> 
   return prisma.customer.findUnique({
     where: { code: code.trim().toUpperCase() },
   });
-}
-
-/**
- * The lookup behind the new-order autofill. `handle` must already be
- * normalized — call normalizeTiktokUsername() first.
- */
-export async function findCustomerByTiktok(
-  handle: string,
-): Promise<Customer | null> {
-  return prisma.customer.findUnique({ where: { tiktokUsername: handle } });
 }
 
 /**
@@ -146,9 +131,9 @@ export async function createCustomer(input: NewCustomer): Promise<Customer> {
 /**
  * Updates a customer's own record — the detail page's Edit action.
  *
- * `id` only, never `code` or `tiktokUsername`: both can appear in the input
- * (a rename is exactly what this saves) but neither is stable enough to key
- * the WHERE clause on. This never touches past orders — see the domain note
+ * `id` only, never `code`: the code is what the URL carries, but `id` is the
+ * identity and the only thing safe to key the WHERE clause on. This never
+ * touches past orders — see the domain note
  * in CLAUDE.md: an order snapshots the customer's details at the time it was
  * placed, so moving house today can't rewrite where last month's parcel
  * actually went.

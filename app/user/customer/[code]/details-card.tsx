@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, PencilEdit01Icon, TiktokIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon, PencilEdit01Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,8 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { Customer } from "@/lib/customers";
-import { formatTiktokHandle, normalizeTiktokUsername } from "@/lib/customers";
 import { CITIES, formatDate } from "@/lib/orders";
 
 import { updateCustomerAction } from "./actions";
@@ -95,11 +88,9 @@ export function DetailsCard({ customer }: { customer: Customer }) {
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [message, setMessage] = React.useState<string | undefined>();
 
-  const [tiktok, setTiktok] = React.useState(customer.tiktokUsername);
   const [city, setCity] = React.useState<string | null>(customer.city);
 
   function startEdit() {
-    setTiktok(customer.tiktokUsername);
     setCity(customer.city);
     setErrors({});
     setMessage(undefined);
@@ -123,10 +114,6 @@ export function DetailsCard({ customer }: { customer: Customer }) {
     });
   }
 
-  const normalizedTiktok = normalizeTiktokUsername(tiktok);
-  const showNormalizedTiktok =
-    normalizedTiktok !== "" && normalizedTiktok !== tiktok.trim();
-
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between px-1">
@@ -149,22 +136,6 @@ export function DetailsCard({ customer }: { customer: Customer }) {
         <dl className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border bg-card shadow-sm">
           <Row title="Name">
             <span className="font-medium">{customer.name}</span>
-          </Row>
-          <Row title="TikTok">
-            <a
-              href={`https://www.tiktok.com/@${customer.tiktokUsername}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-mono text-xs font-medium hover:bg-accent"
-            >
-              <HugeiconsIcon icon={TiktokIcon} size={12} strokeWidth={2} />
-              {formatTiktokHandle(customer.tiktokUsername)}
-            </a>
-          </Row>
-          <Row title="TikTok name">
-            {customer.tiktokName || (
-              <span className="text-muted-foreground/40">—</span>
-            )}
           </Row>
           <Row title="Mobile">
             <span className="numeric font-medium">{customer.phone}</span>
@@ -217,48 +188,6 @@ export function DetailsCard({ customer }: { customer: Customer }) {
                 aria-describedby={errors.name ? "name-error" : undefined}
               />
               <FieldError id="name-error" message={errors.name} />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="tiktokUsername">TikTok username</FieldLabel>
-              <InputGroup>
-                <InputGroupAddon>
-                  <InputGroupText>@</InputGroupText>
-                </InputGroupAddon>
-                <InputGroupInput
-                  id="tiktokUsername"
-                  name="tiktokUsername"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  value={tiktok}
-                  onChange={(e) => setTiktok(e.target.value)}
-                  aria-invalid={!!errors.tiktokUsername}
-                  aria-describedby={
-                    errors.tiktokUsername ? "tiktokUsername-error" : undefined
-                  }
-                />
-              </InputGroup>
-              {showNormalizedTiktok ? (
-                <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                  saved as @{normalizedTiktok}
-                </p>
-              ) : null}
-              <FieldError
-                id="tiktokUsername-error"
-                message={errors.tiktokUsername}
-              />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="tiktokName" optional>
-                TikTok account name
-              </FieldLabel>
-              <Input
-                id="tiktokName"
-                name="tiktokName"
-                defaultValue={customer.tiktokName}
-              />
             </div>
 
             <div>

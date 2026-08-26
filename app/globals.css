@@ -127,15 +127,6 @@
 
   --radius: 0.5rem;
 
-  /* ── TikTok brand ─────────────────────────────────────────────────────────
-     Third-party colors, used ONLY to badge the TikTok-sourced fields on the
-     customer form. Never reuse these for RALLA chrome — they are not ours.
-     Both neons fail AA as text (#fe2c55 is 3.6:1 on white, #25f4ee is 1.6:1),
-     so they are fill and accent only, always on the black slab. */
-  --tiktok-ink: #000000;
-  --tiktok-cyan: #25f4ee;
-  --tiktok-red: #fe2c55;
-
   /* ── Delivery / order status — RALLA-specific, no shadcn equivalent ───────
      Deliberately OUTSIDE the berry hue family (337–347°) so a status can
      never be mistaken for brand chrome. Always pair the color with a label. */
@@ -260,11 +251,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-
-  /* TikTok brand — badge only, see the note in :root */
-  --color-tiktok-ink: var(--tiktok-ink);
-  --color-tiktok-cyan: var(--tiktok-cyan);
-  --color-tiktok-red: var(--tiktok-red);
 
   /* Delivery status */
   --color-pending: var(--pending);

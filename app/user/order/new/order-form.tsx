@@ -96,7 +96,7 @@ export function OrderForm({ products }: { products: Product[] }) {
     setLines((current) => [...current, blankLine(nextLineSeq.current++)]);
   }
 
-  // Controlled so the TikTok search can fill them. Still editable afterwards —
+  // Controlled so the customer search can fill them. Still editable afterwards —
   // what gets saved is whatever is in the fields, not the customer record, so
   // a one-off address change on this order doesn't rewrite the customer.
   const [linked, setLinked] = React.useState<Customer | null>(null);
@@ -164,9 +164,7 @@ export function OrderForm({ products }: { products: Product[] }) {
                 <span className="numeric font-mono font-medium text-foreground">
                   {linked.code}
                 </span>
-                <span className="font-mono text-muted-foreground">
-                  @{linked.tiktokUsername}
-                </span>
+                <span className="text-muted-foreground">{linked.name}</span>
                 <button
                   type="button"
                   onClick={clearLink}

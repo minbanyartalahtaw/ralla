@@ -136,21 +136,23 @@ All of it lives in `app/globals.css`. Rules that matter:
 
 ## Domain
 
-**`Customer.id` is the identity. The TikTok handle is not.** Orders arrive through
-TikTok, so the handle is how staff *find* a customer — but its owner can rename it at
-any time. It is a mutable, unique lookup index; anything that needs to reference a
-customer stores `id`.
+**`Customer.id` is the identity.** Nothing else about a customer is stable: name,
+phone, city and address are all editable, and `code` is display-facing. Anything that
+needs to reference a customer stores `id`.
+
+**The TikTok handle was removed in August 2026** (`customer_tiktok_optional` then
+`drop_customer_tiktok`) — the client stopped wanting it recorded. Staff now find a
+customer by name, `RLC-` code or phone; those three are what `listCustomers()` and
+`searchCustomers()` match on. Don't reintroduce a per-platform handle column without a
+reason to store one: it was a second identity to keep correct, and nothing depended on
+it. See the migration comments for the two-step pattern to reuse when dropping a
+column that production is still writing.
 
 **Detail URLs address a record by its `code`, not its `id`.** `/user/customer/RLC-1015`
 is the row staff are already looking at, so a pasted link reads as the record it came
-from; `id` is an internal surrogate that is never displayed, and the TikTok handle can
-be renamed out from under a saved link. Codes are matched case-insensitively — they are
-stored uppercase, but URLs come back lowercased often enough that an exact match would
-404 on a link that is otherwise correct.
-
-Handles are stored normalized (lowercase, no `@`). `normalizeTiktokUsername()` in
-`lib/customers.ts` accepts `@name`, `name`, or a pasted profile URL and reduces all
-three to the same handle. Always normalize before comparing or storing.
+from; `id` is an internal surrogate that is never displayed. Codes are matched
+case-insensitively — they are stored uppercase, but URLs come back lowercased often
+enough that an exact match would 404 on a link that is otherwise correct.
 
 **An order copies the customer's details, it doesn't just link to them.** `Order`
 carries its own `customer`, `phone`, `city` and `address`. If someone moves house,

@@ -6,8 +6,8 @@
 //     sequence, so two staff saving at once can't mint the same one.
 //   * Money is a whole number of kyats. Never a float — see CLAUDE.md.
 //   * Orders COPY the customer's details at save time instead of joining live.
-//     A customer who moves house or renames their TikTok must not rewrite where
-//     past orders were delivered.
+//     A customer who moves house must not rewrite where past orders were
+//     delivered.
 //   * Timestamps are `timestamptz`. Myanmar is UTC+06:30, so formatting must
 //     happen in Asia/Yangon at render time, never by slicing an ISO string.
 
@@ -36,24 +36,20 @@ enum PaymentMethod {
   refunded
 }
 
-/// Someone who buys from the TikTok shop.
+/// Someone who buys from the shop.
 ///
-/// `tiktokUsername` is a unique LOOKUP key, not the identity — its owner can
-/// rename it at any time. Anything referencing a customer uses `id`. Store it
-/// normalized (lowercase, no `@`) via normalizeTiktokUsername().
+/// `id` is the identity and the only thing other records point at. Staff find
+/// a customer by `code`, phone or name — see searchCustomers().
 model Customer {
   id   Int    @id @default(autoincrement())
   code String @unique @default(dbgenerated("('RLC-' || nextval('customer_code_seq'))"))
 
-  tiktokUsername String @unique @map("tiktok_username")
-  /// TikTok profile display name. Often nothing like their real name.
-  tiktokName     String @default("") @map("tiktok_name")
   /// Real name — this is what goes on the delivery label.
-  name           String
-  phone          String
-  city           String
-  address        String
-  note           String @default("")
+  name    String
+  phone   String
+  city    String
+  address String
+  note    String @default("")
 
   /// Avatar catalogue id like `royal-f2`, picked on the customer's own page.
   /// The tier prefix is the point: it says what kind of customer this is, so

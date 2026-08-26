@@ -4,11 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createCustomer, findCustomerByTiktok } from "@/lib/customer-store";
-import {
-  isValidTiktokUsername,
-  normalizeTiktokUsername,
-} from "@/lib/customers";
+import { createCustomer } from "@/lib/customer-store";
 import { CITIES } from "@/lib/orders";
 import type { CreateCustomerState } from "./state";
 
@@ -18,9 +14,6 @@ export async function createCustomerAction(
 ): Promise<CreateCustomerState> {
   await requireSession();
 
-  const tiktokRaw = String(formData.get("tiktokUsername") ?? "");
-  const tiktokUsername = normalizeTiktokUsername(tiktokRaw);
-  const tiktokName = String(formData.get("tiktokName") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
@@ -28,16 +21,6 @@ export async function createCustomerAction(
   const note = String(formData.get("note") ?? "").trim();
 
   const errors: Record<string, string> = {};
-
-  if (!tiktokUsername) {
-    errors.tiktokUsername = "TikTok username is required.";
-  } else if (!isValidTiktokUsername(tiktokUsername)) {
-    errors.tiktokUsername =
-      "Letters, numbers, underscore and period only, 2–24 characters.";
-  } else if (await findCustomerByTiktok(tiktokUsername)) {
-    // The handle is the lookup key for order autofill, so it has to be unique.
-    errors.tiktokUsername = `@${tiktokUsername} is already saved.`;
-  }
 
   if (!name) errors.name = "Customer name is required.";
 
@@ -56,8 +39,6 @@ export async function createCustomerAction(
   }
 
   const customer = await createCustomer({
-    tiktokUsername,
-    tiktokName,
     name,
     phone,
     city,

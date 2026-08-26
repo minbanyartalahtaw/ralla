@@ -51,8 +51,6 @@ async function main() {
 
   const thanda = await prisma.customer.create({
     data: {
-      tiktokUsername: "thanda.beauty",
-      tiktokName: "Thanda Beauty 🌸",
       name: "မသန္တာဝင်း",
       phone: "09770112233",
       city: "ရန်ကုန်တိုင်းဒေသကြီး",
@@ -63,8 +61,6 @@ async function main() {
 
   const khin = await prisma.customer.create({
     data: {
-      tiktokUsername: "khinmyothu",
-      tiktokName: "Khin Myo Thu",
       name: "ခင်မျိုးသူ",
       phone: "09442887100",
       city: "မန္တလေးတိုင်းဒေသကြီး",

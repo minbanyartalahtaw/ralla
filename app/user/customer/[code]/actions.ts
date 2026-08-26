@@ -5,24 +5,17 @@ import { revalidatePath } from "next/cache";
 import { parseAvatarId } from "@/lib/avatar";
 import { requireSession } from "@/lib/auth";
 import {
-  findCustomerByTiktok,
   getCustomer,
   updateCustomer,
   updateCustomerAvatar,
 } from "@/lib/customer-store";
-import {
-  isValidTiktokUsername,
-  normalizeTiktokUsername,
-} from "@/lib/customers";
 import { CITIES } from "@/lib/orders";
 import type { UpdateCustomerState } from "./state";
 
 /**
  * Saves the Details card on a customer's own page.
  *
- * Same field rules as customer/new/actions.ts, with one addition: the
- * TikTok-handle uniqueness check has to exclude this customer's own row, or
- * saving the form unchanged would fail by colliding with itself.
+ * Same field rules as customer/new/actions.ts.
  *
  * Never touches a past order — Order snapshots `customer`, `phone`, `city`
  * and `address` at the time it was placed, so a house move here can't
@@ -42,10 +35,6 @@ export async function updateCustomerAction(
     return { errors: {}, message: "Customer not found.", ok: false };
   }
 
-  const tiktokUsername = normalizeTiktokUsername(
-    String(formData.get("tiktokUsername") ?? ""),
-  );
-  const tiktokName = String(formData.get("tiktokName") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const city = String(formData.get("city") ?? "").trim();
@@ -53,18 +42,6 @@ export async function updateCustomerAction(
   const note = String(formData.get("note") ?? "").trim();
 
   const errors: Record<string, string> = {};
-
-  if (!tiktokUsername) {
-    errors.tiktokUsername = "TikTok username is required.";
-  } else if (!isValidTiktokUsername(tiktokUsername)) {
-    errors.tiktokUsername =
-      "Letters, numbers, underscore and period only, 2–24 characters.";
-  } else {
-    const existing = await findCustomerByTiktok(tiktokUsername);
-    if (existing && existing.id !== id) {
-      errors.tiktokUsername = `@${tiktokUsername} is already saved.`;
-    }
-  }
 
   if (!name) errors.name = "Customer name is required.";
 
@@ -83,8 +60,6 @@ export async function updateCustomerAction(
   }
 
   await updateCustomer(id, {
-    tiktokUsername,
-    tiktokName,
     name,
     phone,
     city,
@@ -93,8 +68,8 @@ export async function updateCustomerAction(
   });
 
   revalidatePath(`/user/customer/${customer.code}`);
-  // The customer list shows name and handle; the order form's search reads
-  // the table fresh on every keystroke, so it needs nothing revalidated.
+  // The customer list shows the name; the order form's search reads the table
+  // fresh on every keystroke, so it needs nothing revalidated.
   revalidatePath("/user/customer");
 
   return { errors: {}, ok: true };

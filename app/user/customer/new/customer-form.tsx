@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon, TiktokIcon } from "@hugeicons/core-free-icons";
+import { Alert02Icon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,14 +16,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea";
-import { normalizeTiktokUsername } from "@/lib/customers";
 import { CITIES } from "@/lib/orders";
 
 import { createCustomerAction } from "./actions";
@@ -70,14 +63,8 @@ export function CustomerForm() {
   // The Combobox holds its value in React state, so a hidden input carries it
   // into the FormData the Server Action receives.
   const [city, setCity] = React.useState<string | null>(null);
-  const [tiktok, setTiktok] = React.useState("");
 
   const { errors } = state;
-
-  // Preview what the server will actually store, so pasting a profile URL
-  // visibly resolves to a handle before submitting.
-  const normalized = normalizeTiktokUsername(tiktok);
-  const showNormalized = normalized !== "" && normalized !== tiktok.trim();
 
   return (
     <form action={formAction} className="space-y-6">
@@ -96,91 +83,13 @@ export function CustomerForm() {
         </div>
       ) : null}
 
-      <fieldset className="overflow-hidden rounded-lg border bg-card">
-        <legend className="sr-only">Identity</legend>
-        {/* TikTok's own colors, so the section reads as "their data, not ours".
-            The neons are fill only — they'd fail contrast as text. */}
-        <div className="flex items-center gap-2 bg-tiktok-ink px-5 py-3">
-          <HugeiconsIcon
-            icon={TiktokIcon}
-            size={16}
-            strokeWidth={1.5}
-            className="text-white"
-          />
-          <h2 className="relative text-[13px] font-semibold">
-            <span
-              aria-hidden
-              className="absolute -top-px -left-0.5 text-tiktok-cyan"
-            >
-              TikTok
-            </span>
-            <span
-              aria-hidden
-              className="absolute top-px left-0.5 text-tiktok-red"
-            >
-              TikTok
-            </span>
-            <span className="relative text-white">TikTok</span>
-          </h2>
-        </div>
-        <div
-          aria-hidden
-          className="h-0.5 bg-linear-to-r from-tiktok-cyan via-tiktok-red to-tiktok-cyan"
-        />
-        <div className="grid gap-4 p-5 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="tiktokUsername">Username</Label>
-            <InputGroup>
-              <InputGroupAddon>
-                <InputGroupText>@</InputGroupText>
-              </InputGroupAddon>
-              <InputGroupInput
-                id="tiktokUsername"
-                name="tiktokUsername"
-                placeholder=""
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                value={tiktok}
-                onChange={(e) => setTiktok(e.target.value)}
-                aria-invalid={!!errors.tiktokUsername}
-                aria-describedby={
-                  errors.tiktokUsername ? "tiktokUsername-error" : undefined
-                }
-              />
-            </InputGroup>
-            {showNormalized ? (
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                saved as @{normalized}
-              </p>
-            ) : null}
-            <FieldError
-              id="tiktokUsername-error"
-              message={errors.tiktokUsername}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="tiktokName" >
-              TikTok account name
-            </Label>
-            <Input
-              id="tiktokName"
-              name="tiktokName"
-              placeholder=""
-            />
-          </div>
-
-
-        </div>
-      </fieldset>
-            <fieldset className="rounded-lg border bg-card">
+      <fieldset className="rounded-lg border bg-card">
         <legend className="sr-only">Delivery</legend>
         <div className="border-b px-5 py-3">
           <h2 className="text-[13px] font-semibold">Delivery Info</h2>
         </div>
         <div className="grid gap-4 p-5 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
+          <div className="sm:col-span-2">
             <Label htmlFor="name">Name</Label>
             <Input
               id="name"
