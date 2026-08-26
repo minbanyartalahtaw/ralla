@@ -44,7 +44,7 @@ const label = "text-[10px] font-semibold tracking-[0.14em] text-muted-foreground
  * arm's length on a desktop; this sheet is read as a screenshot forwarded to a
  * customer's phone, where 11px of address is a squint.
  */
-const sheetBody = "text-[13px] sm:text-sm";
+const sheetBody = "text-[13px] @xl:text-sm";
 
 /**
  * The read-only twin of the orders table's StatusSelect. Deliberately not
@@ -70,10 +70,13 @@ function MetaRow({
   title: string;
   children: React.ReactNode;
 }) {
+  // Neither half wraps. A date broken after its day, or a payment method broken
+  // after "Cash on", collides with the row under it and reads as a rendering
+  // fault on something a customer is being handed.
   return (
     <div className="flex items-center justify-between gap-4 py-1">
-      <dt className={label}>{title}</dt>
-      <dd className={`${sheetBody} font-medium`}>{children}</dd>
+      <dt className={`${label} whitespace-nowrap`}>{title}</dt>
+      <dd className={`${sheetBody} font-medium whitespace-nowrap`}>{children}</dd>
     </div>
   );
 }
@@ -99,24 +102,35 @@ export default async function OrderDetailPage({
         <DownloadInvoice code={order.code} />
       </div>
 
+      {/* `@container` rather than the viewport breakpoints this sheet used to
+          use. The two layouts below — the item table and the stacked cards —
+          now switch on how wide the *sheet* is, not how wide the screen is,
+          which is what lets the exported image be the desktop invoice even
+          when it's a phone doing the exporting: the export lays a copy of this
+          out at a fixed width, and a container query re-evaluates for it where
+          a media query never would. It also stops the table from being drawn
+          cramped when a wide window leaves the sheet narrow. */}
       <article
         data-print-sheet
-        className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
+        className="@container mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
       >
-        <header className="flex items-start justify-between gap-4 px-5 py-5 sm:px-8 sm:py-6">
-          <div>
+        <header className="flex items-start justify-between gap-4 px-5 py-5 @xl:px-8 @xl:py-6">
+          <div className="min-w-0">
             <p className="text-[15px] font-bold tracking-[0.32em] text-primary uppercase">
               RALLA
             </p>
-            <p className="mt-1 text-[11px] leading-none tracking-wide text-muted-foreground">
+            <p className="mt-1 text-[11px] leading-none tracking-wide whitespace-nowrap text-muted-foreground">
               Beauty & Cosmetics
             </p>
           </div>
-          <div className="text-right">
+          {/* The letterhead is a fixed pair of short strings — it should take
+              the room it needs and let the name give way, never break "RL-"
+              onto its own line. */}
+          <div className="shrink-0 text-right">
             <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
               Invoice
             </p>
-            <h1 className="numeric mt-1 font-mono text-[13px] font-semibold tracking-wide text-foreground">
+            <h1 className="numeric mt-1 font-mono text-[13px] font-semibold tracking-wide whitespace-nowrap text-foreground">
               {order.code}
             </h1>
           </div>
@@ -124,13 +138,22 @@ export default async function OrderDetailPage({
 
         <div className="h-px bg-border" aria-hidden />
 
-        <div className="px-5 py-5 sm:px-8 sm:py-6">
-          <div className="grid gap-5 sm:grid-cols-[1.1fr_0.9fr] sm:gap-8">
-            <div>
+        <div className="px-5 py-5 @xl:px-8 @xl:py-6">
+          {/* `auto` for the meta, the rest to the address — not the two
+              fractions this used to split. Burmese has no spaces, so a city
+              like မန္တလေးတိုင်းဒေသကြီး is one unbreakable run, and under `fr`
+              its min-content dragged the address column wide enough to starve
+              the meta beside it into wrapping every value. `minmax(0,1fr)`
+              refuses it that pull; `overflow-wrap: anywhere` on the address
+              itself is what lets the run break instead. */}
+          <div className="grid gap-5 @xl:grid-cols-[minmax(0,1fr)_auto] @xl:gap-8">
+            <div className="min-w-0">
               <p className={label}>Billed to</p>
               {/* The snapshot, not the customer's current record — this is
                   where the parcel was actually addressed. */}
-              <address className={`mt-2.5 leading-relaxed not-italic ${sheetBody}`}>
+              <address
+                className={`mt-2.5 leading-relaxed not-italic [overflow-wrap:anywhere] ${sheetBody}`}
+              >
                 {customer ? (
                   <Link
                     href={`/user/customer/${customer.code}`}
@@ -154,11 +177,11 @@ export default async function OrderDetailPage({
             {/* On mobile this reads as a soft card — a screenshot needs the
                 meta to be effortlessly scannable without hunting across a
                 full-width table. On desktop it breathes as plain space. */}
-            <dl className="rounded-xl bg-muted/50 px-4 py-3 sm:rounded-none sm:bg-transparent sm:p-0 sm:self-start">
+            <dl className="rounded-xl bg-muted/50 px-4 py-3 @xl:min-w-52 @xl:rounded-none @xl:bg-transparent @xl:p-0 @xl:self-start">
               <MetaRow title="Date">
                 <span className="numeric text-foreground">{formatDateTime(order.placedAt)}</span>
               </MetaRow>
-              <div className="my-1 h-px bg-border/60 sm:hidden" aria-hidden />
+              <div className="my-1 h-px bg-border/60 @xl:hidden" aria-hidden />
               <MetaRow title="Payment">
                 <span
                   className={
@@ -177,7 +200,7 @@ export default async function OrderDetailPage({
                   question. `data-invoice-hide` takes it, and its divider, out
                   of the capture; it stays on screen. */}
               <div data-invoice-hide>
-                <div className="my-1 h-px bg-border/60 sm:hidden" aria-hidden />
+                <div className="my-1 h-px bg-border/60 @xl:hidden" aria-hidden />
                 <MetaRow title="Status">
                   <StatusChip status={order.status} />
                 </MetaRow>
@@ -187,7 +210,7 @@ export default async function OrderDetailPage({
 
           {/* ── Items ─────────────────────────────────────────────── */}
           {/* Desktop: real table with generous gutters and tabular nums */}
-          <table className={`mt-6 hidden w-full sm:table ${sheetBody}`}>
+          <table className={`mt-6 hidden w-full @xl:table ${sheetBody}`}>
             <thead>
               <tr className="border-b border-border">
                 <th scope="col" className={`${label} pb-2.5 text-left`}>
@@ -237,7 +260,7 @@ export default async function OrderDetailPage({
           </table>
 
           {/* Mobile: stacked cards — no horizontal scroll, no squinting */}
-          <div className={`mt-6 sm:hidden ${sheetBody}`}>
+          <div className={`mt-6 @xl:hidden ${sheetBody}`}>
             <p className={`${label} pb-2`}>Items · {itemCount(order.items)}</p>
             <div className="divide-y divide-border/70 overflow-hidden rounded-xl border">
               {order.items.map((item) => (
@@ -263,14 +286,14 @@ export default async function OrderDetailPage({
 
           {/* ── Total ─────────────────────────────────────────────── */}
           <div className="mt-5 flex justify-end">
-            <div className="flex w-full items-center justify-between gap-4 rounded-xl bg-muted/40 px-4 py-3 sm:max-w-[19rem] sm:rounded-none sm:bg-transparent sm:px-0 sm:py-0 sm:border-t sm:border-border sm:pt-4">
+            <div className="flex w-full items-center justify-between gap-4 rounded-xl bg-muted/40 px-4 py-3 @xl:max-w-[19rem] @xl:rounded-none @xl:bg-transparent @xl:px-0 @xl:py-0 @xl:border-t @xl:border-border @xl:pt-4">
               <div>
                 <p className={label}>Total</p>
                 <p className="numeric mt-0.5 text-xs text-muted-foreground">
                   {itemCount(order.items)} {itemCount(order.items) === 1 ? "item" : "items"}
                 </p>
               </div>
-              <p className="numeric text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              <p className="numeric text-xl font-bold tracking-tight text-foreground @xl:text-2xl">
                 {formatKyat(order.total)}
               </p>
             </div>

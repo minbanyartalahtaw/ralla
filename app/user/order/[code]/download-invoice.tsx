@@ -16,15 +16,20 @@ import { Button } from "@/components/ui/button";
  * pins `[data-print-sheet]` to its light tokens at all times, so a shop working
  * in dark mode still exports a white document.
  *
- * The capture inherits whatever layout the viewport is currently matching —
- * the item table on a desktop, the stacked cards on a phone — because those
- * are viewport media queries and cloning the node doesn't re-evaluate them.
- * Both are legible invoices; making the export identical everywhere means
- * moving the sheet's `sm:` rules onto container queries.
+ * The image is always the desktop invoice — the item table, never the stacked
+ * cards — whatever the staff member is holding. One customer gets the same
+ * document as the next, and the layout doesn't advertise which device the shop
+ * happened to answer from.
  */
 
 /** Enough to survive a chat app's re-compression without a file anyone waits on. */
 const SCALE = 2;
+
+/**
+ * Wide enough to clear the sheet's `@xl` container breakpoint, and the width
+ * the sheet already has on a desktop — so the image is what staff see there.
+ */
+const IMAGE_WIDTH = 640;
 
 async function renderSheet(): Promise<Blob> {
   const sheet = document.querySelector<HTMLElement>("[data-print-sheet]");
@@ -34,18 +39,42 @@ async function renderSheet(): Promise<Blob> {
   // opening an order.
   const { domToBlob } = await import("modern-screenshot");
 
-  return domToBlob(sheet, {
-    scale: SCALE,
-    backgroundColor: "#ffffff",
-    // Anything staff-only on the sheet opts out by attribute rather than by
-    // being listed here, so the markup stays the single place that says what
-    // the customer sees. Excluding a node excludes its children with it.
-    filter: (node) =>
-      !(node instanceof Element && node.hasAttribute("data-invoice-hide")),
-    // The rounded corners and drop shadow are how a card sits on a page. A
-    // document has neither, and against a chat bubble they read as damage.
-    style: { borderRadius: "0", boxShadow: "none", border: "0" },
-  });
+  // A copy, laid out off-screen at a fixed width, rather than the sheet where
+  // it sits. The sheet's breakpoints are container queries, so a 640px-wide
+  // copy renders the table even on a phone whose viewport could never show it.
+  // It has to be in the document and not merely detached: a container query
+  // needs the browser to actually lay the thing out before it resolves.
+  const stage = document.createElement("div");
+  stage.setAttribute("aria-hidden", "true");
+  // Off-screen by position, not by `opacity` or `visibility` — those are
+  // computed styles the capture would faithfully copy onto the clone.
+  stage.style.cssText = `position:fixed;top:0;left:-${IMAGE_WIDTH * 2}px;width:${IMAGE_WIDTH}px;`;
+
+  const clone = sheet.cloneNode(true) as HTMLElement;
+  stage.append(clone);
+  document.body.append(stage);
+
+  try {
+    // The sheet is laid out here and rasterised a moment later; if a face is
+    // still loading, those two happen against different metrics and text that
+    // measured as fitting comes out wrapped.
+    await document.fonts.ready;
+
+    return await domToBlob(clone, {
+      scale: SCALE,
+      backgroundColor: "#ffffff",
+      // Anything staff-only on the sheet opts out by attribute rather than by
+      // being listed here, so the markup stays the single place that says what
+      // the customer sees. Excluding a node excludes its children with it.
+      filter: (node) =>
+        !(node instanceof Element && node.hasAttribute("data-invoice-hide")),
+      // The rounded corners and drop shadow are how a card sits on a page. A
+      // document has neither, and against a chat bubble they read as damage.
+      style: { borderRadius: "0", boxShadow: "none", border: "0" },
+    });
+  } finally {
+    stage.remove();
+  }
 }
 
 function save(file: File) {
