@@ -15,6 +15,7 @@ import {
 } from "@/lib/orders";
 
 import { BackButton } from "@/components/back-button";
+import { DownloadInvoice } from "./download-invoice";
 import { OrderNote } from "./order-note";
 
 
@@ -95,6 +96,7 @@ export default async function OrderDetailPage({
           neither a crop nor a PDF picks it up. */}
       <div className="flex items-center justify-between gap-3">
         <BackButton fallback="/user/order" />
+        <DownloadInvoice code={order.code} />
       </div>
 
       <article
@@ -168,10 +170,18 @@ export default async function OrderDetailPage({
                   {PAYMENT_METHOD[order.paymentMethod]}
                 </span>
               </MetaRow>
-              <div className="my-1 h-px bg-border/60 sm:hidden" aria-hidden />
-              <MetaRow title="Status">
-                <StatusChip status={order.status} />
-              </MetaRow>
+              {/* Delivery status is an internal fact. Staff read it here, but
+                  the exported image is the customer's copy — it tells them
+                  nothing they can act on, and a "pending" chip on a parcel
+                  they have already been told is on its way only invites the
+                  question. `data-invoice-hide` takes it, and its divider, out
+                  of the capture; it stays on screen. */}
+              <div data-invoice-hide>
+                <div className="my-1 h-px bg-border/60 sm:hidden" aria-hidden />
+                <MetaRow title="Status">
+                  <StatusChip status={order.status} />
+                </MetaRow>
+              </div>
             </dl>
           </div>
 
