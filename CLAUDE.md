@@ -79,6 +79,7 @@ app/
 components/ui/        # shadcn components (generated — regenerate, don't hand-write)
 lib/                  # domain (orders, customers) + *-store.ts persistence
 prisma/               # schema, migrations, seed
+docs/                 # runbooks — production-migrations.md before touching prod
 generated/prisma/     # Prisma client — gitignored, made by `prisma generate`
 ```
 
@@ -193,6 +194,14 @@ order does not restore it.
 
 Storage is Postgres via Prisma. `lib/*-store.ts` are the only modules that touch it;
 everything else goes through them. Run `npm run db:up` then `npm run db:migrate`.
+
+**Before running any migration against production, read
+`docs/production-migrations.md`.** Production is Prisma Postgres behind a connection
+pooler, and it has two traps that cost real time on 2026-08-26: dropping a column in one
+step breaks the deployed app (Prisma names every column in its `SELECT`, so schema
+changes and deploys must be interleaved), and the pooler leaks Prisma's advisory lock so
+the second migration of a session hangs. That file is the runbook — follow it rather
+than improvising.
 
 ## Auth
 
