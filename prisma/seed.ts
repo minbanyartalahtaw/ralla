@@ -75,6 +75,7 @@ async function main() {
       return {
         productId: p.id,
         name: p.name,
+        sku: p.sku,
         unitPrice: p.price,
         quantity,
       };

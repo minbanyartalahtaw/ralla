@@ -114,8 +114,10 @@ model Order {
 
 /// One product line on an order.
 ///
-/// `name` and `unitPrice` are snapshots for the same reason the address is: a
-/// price rise next month must not rewrite last month's revenue.
+/// `name`, `sku` and `unitPrice` are snapshots for the same reason the address
+/// is: a price rise next month must not rewrite last month's revenue, and a SKU
+/// edited on the catalog page must not silently relabel what was picked off the
+/// shelf last month.
 model OrderItem {
   id      Int   @id @default(autoincrement())
   orderId Int   @map("order_id")
@@ -126,6 +128,10 @@ model OrderItem {
   product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   name      String
+  /// Catalog SKU as it read at time of sale. Empty for a line whose product was
+  /// already gone when the order was written, and for the rows that predate this
+  /// column — nothing else can be recovered for those.
+  sku       String @default("")
   /// Whole kyats, at the time of sale.
   unitPrice Int    @map("unit_price")
   quantity  Int

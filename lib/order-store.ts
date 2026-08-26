@@ -61,6 +61,8 @@ export type NewOrderLine = {
   productId: number | null;
   /** Snapshot of the product name at time of sale. */
   name: string;
+  /** Snapshot of the catalog SKU at time of sale. Empty for an ad-hoc line. */
+  sku: string;
   /** Whole kyats, snapshot at time of sale. */
   unitPrice: number;
   quantity: number;
@@ -591,6 +593,7 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
               create: input.lines.map((line) => ({
                 productId: line.productId,
                 name: line.name,
+                sku: line.sku,
                 unitPrice: line.unitPrice,
                 quantity: line.quantity,
               })),

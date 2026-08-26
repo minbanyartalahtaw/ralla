@@ -30,9 +30,9 @@ function parseId(raw: FormDataEntryValue | null | undefined) {
 }
 
 /**
- * Every line must resolve to a catalog product. The stored `name` is read from
- * that product rather than the form, so the snapshot always matches the
- * catalog even if the submission was tampered with.
+ * Every line must resolve to a catalog product. The stored `name` and `sku` are
+ * read from that product rather than the form, so the snapshot always matches
+ * the catalog even if the submission was tampered with.
  *
  * `unitPrice` IS taken from the form — staff can discount a line — but it must
  * be a whole number above zero.
@@ -76,6 +76,7 @@ export async function parseOrderLines(
       productId: product.id,
       // Snapshot from the catalog, not from the browser.
       name: product.name,
+      sku: product.sku,
       unitPrice,
       quantity,
     });

@@ -195,11 +195,23 @@ export default async function OrderDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/70">
-              {/* Names and prices as they were at time of sale — the line's own
-                  snapshot, not today's catalog entry. */}
+              {/* Names, SKUs and prices as they were at time of sale — the
+                  line's own snapshot, not today's catalog entry. */}
               {order.items.map((item) => (
                 <tr key={item.id} className="group">
-                  <td className="py-3 pr-4 font-medium text-foreground">{item.name}</td>
+                  <td className="py-3 pr-4 font-medium text-foreground">
+                    {item.name}
+                    {/* Under the name rather than in its own column: it belongs
+                        to the item, and a fifth column would squeeze the three
+                        numeric ones that have to stay readable down a column.
+                        Empty only for lines written before the snapshot
+                        existed, or whose product was already deleted. */}
+                    {item.sku ? (
+                      <span className="numeric mt-0.5 block font-mono text-[11px] font-normal text-muted-foreground">
+                        {item.sku}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="numeric py-3 pl-4 text-center text-muted-foreground">
                     {item.quantity}
                   </td>
@@ -222,6 +234,11 @@ export default async function OrderDetailPage({
                 <div key={item.id} className="flex items-start justify-between gap-4 bg-card px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">{item.name}</p>
+                    {item.sku ? (
+                      <p className="numeric mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+                        {item.sku}
+                      </p>
+                    ) : null}
                     <p className="numeric mt-1 text-xs text-muted-foreground">
                       {item.quantity} × {formatKyat(item.unitPrice)}
                     </p>
