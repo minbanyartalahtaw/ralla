@@ -4,6 +4,7 @@ import { adminUsername } from "@/lib/session";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 import { AssistantSheet } from "./_components/assistant-sheet";
+import { ScrollHeader } from "./_components/scroll-header";
 import { UserBreadcrumb } from "./_components/user-breadcrumb";
 import { UserSidebar } from "./_components/user-sidebar";
 
@@ -25,7 +26,11 @@ export default async function UserLayout({ children }: LayoutProps<"/user">) {
           eats into the width, instead of just scrolling inside its own
           overflow-x-auto container. */}
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-4">
+        {/* Hides on the way down and comes back on the way up: a long order
+            list is what the screen is for, and the crumb never changes while
+            you scroll one. Only the header itself is a Client Component —
+            what it holds is still rendered here on the server. */}
+        <ScrollHeader>
           {/* Button size wins over the icon-sm variant via tailwind-merge, but
               the variant's icon rule is more specific — hence the `!` on the svg. */}
           <SidebarTrigger className="-ml-1 size-9 [&_svg]:size-5!" />
@@ -35,7 +40,7 @@ export default async function UserLayout({ children }: LayoutProps<"/user">) {
           <div className="ml-auto flex items-center gap-3">
             <AssistantSheet />
           </div>
-        </header>
+        </ScrollHeader>
 
         <div className="min-w-0 flex-1 px-5 py-6 lg:px-8 lg:py-8">{children}</div>
       </SidebarInset>
