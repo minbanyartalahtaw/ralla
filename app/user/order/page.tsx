@@ -83,6 +83,12 @@ export default async function OrdersPage({
   const searching = searched !== "";
   const filtering = status !== undefined;
 
+  // The table and the empty state are single slabs and need the frame to hold
+  // their edges. The cards are slabs themselves — a frame around them boxes a
+  // grid of boxes, so in card view the list draws nothing and the cards float
+  // straight on the page background.
+  const framed = orders.length === 0 || view === "table";
+
   return (
     <div>
       {/* The visible heading is gone — the breadcrumb already names the page.
@@ -174,7 +180,7 @@ export default async function OrdersPage({
         <ViewSwitch query={query} status={status} page={page} view={view} />
       </div>
 
-      <div className="mt-4 rounded-lg border bg-card">
+      <div className={framed ? "mt-4 rounded-lg border bg-card" : "mt-4"}>
         {orders.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
             <span className="text-muted-foreground">
@@ -335,9 +341,7 @@ export default async function OrdersPage({
             </SelectableBody>
           </Table>
         ) : (
-          <div className="p-3">
-            <OrderCards orders={orders} />
-          </div>
+          <OrderCards orders={orders} />
         )}
 
         {/* Inside the card and below the table, so it reads as the foot of the
@@ -348,6 +352,7 @@ export default async function OrdersPage({
           query={query}
           status={status}
           view={view}
+          flush={!framed}
         />
       </div>
     </div>

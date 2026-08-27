@@ -32,6 +32,21 @@ import { StatusSelect } from "./status-select";
  * Semantic tokens throughout (`bg-card`, `text-muted-foreground`), so
  * light/dark mode comes for free.
  *
+ * The item count is a `shrink-0` span beside the truncating name list, not
+ * trailing text inside it — inside it, a card with enough items lost the count
+ * to the ellipsis, so the same figure was there on one card and missing on the
+ * next. Only the names give way now.
+ *
+ * The two share a nested flex box that holds the row's left half, so the count
+ * sits *against* the names it counts instead of being flung to the total's
+ * edge by a short one. It only ends up over there when the names have taken
+ * the whole half and pushed it — which is the one case where there is nowhere
+ * else for it to go.
+ *
+ * The cards float: the list around them draws no frame of its own, and each
+ * card carries a shadow instead. The shadow is tinted darker in dark mode,
+ * where a default black shadow on a near-black page shows nothing.
+ *
  * The card is *not* one big `<Link>`, because the status chip is the same
  * clickable `StatusSelect` the table uses and a `<button>` can't live inside
  * an `<a>`. Instead the link is a transparent overlay stretched across the
@@ -63,7 +78,7 @@ export function OrderCards({ orders }: { orders: OrderWithItems[] }) {
             // `focus-within` rather than `focus-visible`: the thing being
             // focused is the overlay link inside, not the card itself, so the
             // card has to react to focus landing anywhere in it.
-            className="relative rounded-lg border bg-card p-4 transition-colors focus-within:border-primary/40 hover:border-primary/40 hover:bg-accent/40"
+            className="relative rounded-lg border bg-card p-4 shadow-sm transition-[background-color,border-color,box-shadow] focus-within:border-primary/40 hover:border-primary/40 hover:bg-accent/40 hover:shadow-md dark:shadow-black/40"
           >
             {/* The whole-card hit area. Empty and absolutely positioned: it
                 carries no text of its own, so the accessible name has to come
@@ -121,9 +136,9 @@ export function OrderCards({ orders }: { orders: OrderWithItems[] }) {
                 sits on this row for the right-edge alignment, not because
                 it's the least important figure here. */}
             <div className="mt-2 flex items-baseline gap-2 text-[11px] text-muted-foreground/70">
-              <span className="min-w-0 flex-1 truncate">
-                {itemNames}
-                <span className="numeric"> · {itemCount(o.items)}</span>
+              <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                <span className="min-w-0 truncate">{itemNames}</span>
+                <span className="numeric shrink-0">· {itemCount(o.items)}</span>
               </span>
               <span className="numeric shrink-0 font-mono text-sm font-medium text-foreground">
                 {formatKyat(o.total)}

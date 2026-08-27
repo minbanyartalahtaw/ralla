@@ -16,6 +16,10 @@ import { ordersHref, type OrdersView } from "./orders-href";
  *
  * At the ends the link becomes a plain disabled button — rendering a `<Link>`
  * to the page you are already on would look clickable and do nothing.
+ *
+ * `flush` is for the card view, which has no frame around the list: the inset
+ * that lines the pager up with a table's cells would leave it indented from
+ * the cards' own edge, so it drops to nothing and only the rule above stays.
  */
 export function Pager({
   page,
@@ -23,12 +27,14 @@ export function Pager({
   query,
   status,
   view,
+  flush = false,
 }: {
   page: number;
   pageCount: number;
   query: string;
   status?: DeliveryStatus;
   view?: OrdersView["view"];
+  flush?: boolean;
 }) {
   // One page of results needs no controls; "Page 1 of 1" is noise.
   if (pageCount <= 1) return null;
@@ -69,7 +75,9 @@ export function Pager({
   return (
     <nav
       aria-label="Orders pages"
-      className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3"
+      className={`flex flex-wrap items-center justify-between gap-3 border-t py-3 ${
+        flush ? "mt-3" : "px-4"
+      }`}
     >
       {/* One readout, not two — the row range said the same thing. */}
       <p className="numeric text-[11px] text-muted-foreground">
