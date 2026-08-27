@@ -47,3 +47,6 @@ next-env.d.ts
 /generated
 
 .directory
+
+# Claude Code — per-machine settings, not shared
+.claude/settings.local.json
