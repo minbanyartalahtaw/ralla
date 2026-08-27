@@ -10,6 +10,7 @@ import {
   type OrderWithItems,
 } from "@/lib/orders";
 
+import { OrderCode } from "./order-code";
 import { StatusSelect } from "./status-select";
 
 /**
@@ -66,7 +67,13 @@ import { StatusSelect } from "./status-select";
  * 12px dead spot is a cheap price for still being able to read one without
  * opening the order.
  */
-export function OrderCards({ orders }: { orders: OrderWithItems[] }) {
+export function OrderCards({
+  orders,
+  query,
+}: {
+  orders: OrderWithItems[];
+  query: string;
+}) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {orders.map((o) => {
@@ -92,7 +99,7 @@ export function OrderCards({ orders }: { orders: OrderWithItems[] }) {
             {/* Line 1: code + note flag, status chip at the far end. */}
             <div className="flex items-center gap-2">
               <span className="numeric min-w-0 truncate font-mono text-sm font-semibold">
-                {o.code}
+                <OrderCode code={o.code} query={query} />
               </span>
               {o.note ? (
                 <HugeiconsIcon

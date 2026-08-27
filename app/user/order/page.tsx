@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowRight01Icon,
-  Cancel01Icon,
   Note01Icon,
   PlusSignIcon,
   Search01Icon,
@@ -12,13 +11,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
 import {
   Table,
   TableCell,
@@ -32,12 +24,13 @@ import {
   normalizeOrderQuery,
 } from "@/lib/order-store";
 
-import { ordersHref } from "./orders-href";
 import { Pager } from "./pager";
 import { SelectableBody } from "./selectable-body";
 import { StatusSelect } from "./status-select";
 import { StatusTabs } from "./status-tabs";
 import { OrderCards } from "./order-cards";
+import { OrderCode } from "./order-code";
+import { OrderSearch } from "./order-search";
 import { ViewSwitch } from "./view-switch";
 import {
   DELIVERY_STATUS,
@@ -103,69 +96,12 @@ export default async function OrdersPage({
       />
 
       <div className="flex items-center gap-3">
-        {/* A plain GET form, so the search lands in the URL: a filtered list
-            can be bookmarked, shared, and reloaded, and back returns to the
-            previous query. No client JavaScript is involved. */}
-        <form method="get" className="min-w-0 flex-1">
-          <InputGroup className="max-w-xs">
-            <InputGroupAddon>
-              {/* Every code starts `RL-`, so typing it is four keystrokes that
-                  never narrow anything. Shown, not typed — and
-                  normalizeOrderQuery() strips it back off a pasted code. */}
-              <InputGroupText className="numeric font-mono">RL-</InputGroupText>
-            </InputGroupAddon>
-            <InputGroupInput
-              type="search"
-              name="q"
-              // Keyed on the query so a new one gets a new element. The field
-              // is uncontrolled, and Base UI reads `defaultValue` once when it
-              // mounts — on an RSC re-render (a status change on this page
-              // revalidates it) React would otherwise keep the same input and
-              // quietly hand it a default it has already passed the point of
-              // being able to use.
-              key={query}
-              defaultValue={query}
-              placeholder=""
-              aria-label="Search orders by order ID, without the RL- prefix"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              // The browser's own clear button only empties the field — it
-              // never submits, so the list stayed filtered against a box that
-              // looked empty. Hidden in favour of the link below, which
-              // actually goes somewhere.
-              className="numeric font-mono [&::-webkit-search-cancel-button]:appearance-none"
-            />
-            <InputGroupAddon align="inline-end">
-              {searching ? (
-                <InputGroupButton
-                  size="icon-xs"
-                  variant="ghost"
-                  nativeButton={false}
-                  // Keeps the status tab and layout you were on: clearing the
-                  // search narrows by one thing less, it doesn't reset
-                  // everything.
-                  render={<Link href={ordersHref({ status, view })} />}
-                  aria-label="Clear search"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
-                </InputGroupButton>
-              ) : null}
-              <InputGroupButton type="submit" size="sm" variant="ghost">
-                <HugeiconsIcon icon={Search01Icon} strokeWidth={1.5} />
-                Search
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-          {/* Searching inside a status tab keeps you in it. Without this the
-              form would submit `q` alone and quietly drop back to All. */}
-          {status ? <input type="hidden" name="status" value={status} /> : null}
-          {/* Same reasoning for the layout: searching from the table view
-              shouldn't silently land back on cards. */}
-          {view === "table" ? (
-            <input type="hidden" name="view" value="table" />
-          ) : null}
-        </form>
+        <div className="min-w-0 flex-1">
+          {/* Live, but the query still lands in the URL: a filtered list can
+              be bookmarked, shared and reloaded, and back returns to the
+              previous query. */}
+          <OrderSearch query={query} status={status} view={view} />
+        </div>
 
         <Button nativeButton={false} render={<Link href="/user/order/new" />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
@@ -263,7 +199,7 @@ export default async function OrdersPage({
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="numeric font-mono text-[11px] font-medium">
-                        {o.code}
+                        <OrderCode code={o.code} query={query} />
                       </span>
                       {/* A hover-only hint rather than its own column — most
                           orders have no note, so widening every row for the
@@ -341,7 +277,7 @@ export default async function OrdersPage({
             </SelectableBody>
           </Table>
         ) : (
-          <OrderCards orders={orders} />
+          <OrderCards orders={orders} query={query} />
         )}
 
         {/* Inside the card and below the table, so it reads as the foot of the
