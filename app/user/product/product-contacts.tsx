@@ -34,13 +34,21 @@ export function ProductContacts({ products }: { products: Product[] }) {
   if (letters.length === 0) return null;
 
   return (
-    // The A/B/C letter headings are off for now — the grouping itself stays, so
-    // the list is still ordered by them and the headings can come back.
-    <div className="divide-y divide-border/40">
-      {letters.map((letter) => {
+    <div>
+      {letters.map((letter, i) => {
         const items = groups.get(letter)!;
         return (
           <section key={letter}>
+            {/* The tinted band is the whole separator — no rule between groups,
+                so the only horizontal lines in the list are the row dividers.
+                `z-0` puts it over the rows but under the page header, which is
+                `z-10`: a sticky element with no z-index paints by DOM order and
+                would slide over the header instead of under it. */}
+            <h2
+              className={`sticky top-0 z-0 bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-4 ${i === 0 ? "rounded-t-lg" : ""}`}
+            >
+              {letter}
+            </h2>
             <ul className="divide-y divide-border/40">
               {items.map((p) => {
                 const activity = PRODUCT_ACTIVITY[productActivity(p.isActive)];
