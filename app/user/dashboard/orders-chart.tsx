@@ -8,9 +8,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { RevenueDay } from "@/lib/orders";
 
-import { tickDate } from "./tick-date";
+import { periodLabel, tickPeriod } from "./tick-date";
+import type { TrendBucket, TrendPoint } from "./trend-range";
 
 const config = {
   orders: { label: "Orders", color: "var(--chart-1)" },
@@ -26,7 +26,13 @@ const config = {
  * Columns rather than a line, because a count is a tally of discrete things —
  * a line between two days implies the value passed through the days between.
  */
-export function OrdersChart({ data }: { data: RevenueDay[] }) {
+export function OrdersChart({
+  data,
+  bucket,
+}: {
+  data: TrendPoint[];
+  bucket: TrendBucket;
+}) {
   return (
     <ChartContainer config={config} className="aspect-auto h-[220px] w-full">
       <BarChart
@@ -41,7 +47,7 @@ export function OrdersChart({ data }: { data: RevenueDay[] }) {
           axisLine={false}
           tickMargin={8}
           minTickGap={24}
-          tickFormatter={tickDate}
+          tickFormatter={(value: string) => tickPeriod(value, bucket)}
         />
         <YAxis
           width={28}
@@ -55,7 +61,10 @@ export function OrdersChart({ data }: { data: RevenueDay[] }) {
           content={
             <ChartTooltipContent
               labelFormatter={(_, payload) =>
-                tickDate(String(payload?.[0]?.payload?.day ?? ""))
+                periodLabel(
+                  payload?.[0]?.payload as TrendPoint | undefined,
+                  bucket,
+                )
               }
             />
           }

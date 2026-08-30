@@ -13,13 +13,12 @@ import {
 import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
 
 import { BreakdownChart, OrdersChart, RevenueChart } from "./lazy-charts";
+import { parseTrendRange, trendRange, trendSeries } from "./trend-range";
+import { TrendRangeSelect } from "./trend-range-select";
 
 export const metadata: Metadata = {
   title: "Dashboard — RALLA",
 };
-
-/** The window the two trend charts share, in days. */
-const TREND_DAYS = 30;
 
 function Panel({
   title,
@@ -27,7 +26,8 @@ function Panel({
   children,
 }: {
   title: string;
-  note: string;
+  /** The caption, or the control that replaced it. */
+  note: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -36,7 +36,7 @@ function Panel({
         <h2 className="text-[13px] font-semibold">{title}</h2>
         {/* The caveats live in the header, not under the plot — they qualify
             what is being counted, and a reader needs them before the number. */}
-        <p className="text-[11px] text-muted-foreground">{note}</p>
+        <div className="text-[11px] text-muted-foreground">{note}</div>
       </div>
       <div className="p-4">{children}</div>
     </section>
@@ -52,10 +52,20 @@ function Empty({ label }: { label: string }) {
   );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: PageProps<"/user/dashboard">) {
+  const { revenue: rawRevenue, orders: rawOrders } = await searchParams;
+  const revenueRange = parseTrendRange(rawRevenue);
+  const ordersRange = parseTrendRange(rawOrders);
+
   const [orders, trend, topProducts, cities] = await Promise.all([
     listOrders(),
-    revenueByDay(TREND_DAYS),
+    // One pass over the wider of the two windows; the narrower panel takes its
+    // days off the end of the same series rather than asking the database twice.
+    revenueByDay(
+      Math.max(trendRange(revenueRange).days, trendRange(ordersRange).days),
+    ),
     topProductsByUnits(),
     ordersByCity(),
   ]);
@@ -65,26 +75,53 @@ export default async function DashboardPage() {
     return acc;
   }, {});
 
-  // The trend window can be shorter than TREND_DAYS on a young shop, so the
-  // caption reports what was actually plotted rather than what was asked for.
-  const windowNote = `${trend.length} ရက်အတွင်း`;
-  const sold = trend.some((d) => d.orders > 0);
+  const revenueSeries = trendSeries(trend, revenueRange);
+  const ordersSeries = trendSeries(trend, ordersRange);
+  // Emptiness is a fact about the shop, not about the chosen window: a quiet
+  // week belongs on the chart as a row of zeros, and only a shop that has never
+  // sold anything gets told there is nothing to plot. Cancelled orders don't
+  // count, matching what revenueByDay() leaves out.
+  const sold = orders.some((o) => o.status !== "cancelled");
 
   return (
     <div className="space-y-6">
-      {/* Two per row only from `lg`: below that a 30-day axis squeezed into half
-          a phone is unreadable. */}
+      {/* Two per row only from `lg`: below that a month of ticks squeezed into
+          half a phone is unreadable. */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="ရောင်းရငွေ" note={windowNote}>
+        <Panel
+          title="ရောင်းရငွေ"
+          note={
+            <TrendRangeSelect
+              panel="ရောင်းရငွေ"
+              param="revenue"
+              value={revenueRange}
+            />
+          }
+        >
           {sold ? (
-            <RevenueChart data={trend} />
+            <RevenueChart
+              data={revenueSeries.points}
+              bucket={revenueSeries.bucket}
+            />
           ) : (
             <Empty label="No revenue yet" />
           )}
         </Panel>
 
-        <Panel title="အော်ဒါ" note={windowNote}>
-          {sold ? <OrdersChart data={trend} /> : <Empty label="No orders yet" />}
+        <Panel
+          title="အော်ဒါ"
+          note={
+            <TrendRangeSelect panel="အော်ဒါ" param="orders" value={ordersRange} />
+          }
+        >
+          {sold ? (
+            <OrdersChart
+              data={ordersSeries.points}
+              bucket={ordersSeries.bucket}
+            />
+          ) : (
+            <Empty label="No orders yet" />
+          )}
         </Panel>
 
         <Panel title="Best sellers" note="all time">

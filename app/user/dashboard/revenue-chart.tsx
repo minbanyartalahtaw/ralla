@@ -8,9 +8,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { formatKyat, type RevenueDay } from "@/lib/orders";
+import { formatKyat } from "@/lib/orders";
 
-import { tickDate } from "./tick-date";
+import { periodLabel, tickPeriod } from "./tick-date";
+import type { TrendBucket, TrendPoint } from "./trend-range";
 
 /**
  * One series, so no legend — the heading above the chart names what is plotted.
@@ -28,7 +29,13 @@ function tickKyat(value: number) {
   return String(value);
 }
 
-export function RevenueChart({ data }: { data: RevenueDay[] }) {
+export function RevenueChart({
+  data,
+  bucket,
+}: {
+  data: TrendPoint[];
+  bucket: TrendBucket;
+}) {
   return (
     <ChartContainer config={config} className="aspect-auto h-[220px] w-full">
       <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 4 }}>
@@ -41,7 +48,7 @@ export function RevenueChart({ data }: { data: RevenueDay[] }) {
           axisLine={false}
           tickMargin={8}
           minTickGap={24}
-          tickFormatter={tickDate}
+          tickFormatter={(value: string) => tickPeriod(value, bucket)}
         />
         <YAxis
           width={40}
@@ -54,7 +61,10 @@ export function RevenueChart({ data }: { data: RevenueDay[] }) {
           content={
             <ChartTooltipContent
               labelFormatter={(_, payload) =>
-                tickDate(String(payload?.[0]?.payload?.day ?? ""))
+                periodLabel(
+                  payload?.[0]?.payload as TrendPoint | undefined,
+                  bucket,
+                )
               }
               formatter={(value) => formatKyat(Number(value))}
             />
@@ -70,9 +80,11 @@ export function RevenueChart({ data }: { data: RevenueDay[] }) {
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          // No dot per day — 30 of them is noise. The hovered point gets one,
-          // ringed in the surface colour so it stays legible over the line.
-          dot={false}
+          // A short window is a handful of readings, and marking them says so.
+          // Past that the dots merge into the line and only add noise, so the
+          // hovered point gets the only one — ringed in the surface colour so
+          // it stays legible over the line.
+          dot={data.length <= 14 ? { r: 2.5, strokeWidth: 0 } : false}
           activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--card)" }}
         />
       </LineChart>
