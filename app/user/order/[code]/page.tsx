@@ -154,16 +154,28 @@ export default async function OrderDetailPage({
               <address
                 className={`mt-2.5 leading-relaxed not-italic [overflow-wrap:anywhere] ${sheetBody}`}
               >
-                {customer ? (
-                  <Link
-                    href={`/user/customer/${customer.code}`}
-                    className="font-semibold text-foreground decoration-border underline-offset-2 hover:underline"
-                  >
-                    {order.customerName}
-                  </Link>
-                ) : (
-                  <span className="font-semibold text-foreground">{order.customerName}</span>
-                )}
+                {/* Baseline-aligned so the code sits with the name rather than
+                    with its cap-height, and wrapping so a long name pushes it
+                    to its own line instead of squeezing itself. */}
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  {customer ? (
+                    <Link
+                      href={`/user/customer/${customer.code}`}
+                      className="font-semibold text-foreground decoration-border underline-offset-2 hover:underline"
+                    >
+                      {order.customerName}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-foreground">{order.customerName}</span>
+                  )}
+                  {/* The customer's own record, not this order's. A walk-in has
+                      none — the snapshot above is all there is of them. */}
+                  {customer ? (
+                    <span className="numeric font-mono text-[11px] whitespace-nowrap text-muted-foreground">
+                      {customer.code}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="numeric mt-1 text-muted-foreground">
                   {order.phone}
                 </div>
