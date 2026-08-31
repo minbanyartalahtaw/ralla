@@ -1,51 +1,38 @@
 /**
- * The assistant's tool surface: four read-only lookups, nothing that
- * mutates data. See lib/ai/assistant.ts for the loop that calls these.
+ * The assistant's tool surface: two read-only lookups, nothing that mutates
+ * data. See lib/ai/assistant.ts for the loop that calls these.
  *
- * No customer lookup, by request — the assistant doesn't search customers.
+ * Two, by request — shop_summary and stale_orders were dropped as the surface
+ * got hard to hold in one head, along with list_products' lowStock filter, and
+ * no customer lookup was ever added. All of it is in the history if it comes
+ * back.
  *
- * Three of the four answer in finished markdown rather than raw data, so the
- * loop can yield them to the client as-is. Relaying a table through a second
- * model turn only pays the model to retype it as output tokens, which cost
- * six times what input does. lookup_order is the exception: it returns JSON
- * because a question about one order needs narrating, not tabulating.
+ * Both answer in finished markdown rather than raw data, so the loop can yield
+ * them to the client as-is. Relaying a table through a second model turn only
+ * pays the model to retype it as output tokens, which cost six times what
+ * input does.
  */
 
 import type { FunctionDeclaration } from "@google/genai";
 
+import { DELIVERY_STATUS, formatDateTime, formatKyat } from "@/lib/orders";
+import { getOrderByCode } from "@/lib/order-store";
 import {
-  DELIVERY_STATUS,
-  DELIVERY_STATUS_KEYS,
-  PAYMENT_METHOD,
-  formatDate,
-  formatDateTime,
-  formatKyat,
-} from "@/lib/orders";
-import {
-  codOutstanding,
-  countOrdersByStatus,
-  getOrderByCode,
-  staleOrders,
-  todaysOrders,
-  unitsSoldByProduct,
-} from "@/lib/order-store";
-import {
-  LOW_STOCK_THRESHOLD,
   findProductBySku,
-  listLowStockProducts,
   listProducts,
+  listProductsBelowStock,
 } from "@/lib/product-store";
 
 /**
  * Descriptions are deliberately short. They ride along on every request as
- * input tokens, and a flash-lite model picks better from four crisp lines
- * than from four paragraphs.
+ * input tokens, and the model picks better from two crisp lines than from two
+ * paragraphs.
  */
 export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
   {
     name: "lookup_order",
     description:
-      "One order by its RL- invoice code (e.g. RL-260804TXI). Returns status, payment, line items, total, note and delivery history.",
+      "One order by its RL- invoice code (e.g. RL-260804TXI). Returns the date, customer, phone, address, status, line items, total and note.",
     parametersJsonSchema: {
       type: "object",
       properties: {
@@ -58,7 +45,7 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
   {
     name: "list_products",
     description:
-      "Product table with price and stock. No arguments browses the whole catalogue; `query` narrows to one product by name or exact SKU; `lowStock` lists only what is running out, with units sold in the last 30 days.",
+      "Product table with price and stock. No arguments browses the whole catalogue; `query` narrows to one product by name or exact SKU; `stockBelow` lists what is running out, emptiest first.",
     parametersJsonSchema: {
       type: "object",
       properties: {
@@ -66,36 +53,10 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
           type: "string",
           description: "Optional product name or exact SKU to filter to",
         },
-        lowStock: {
-          type: "boolean",
-          description: "True to list only products running out of stock",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "shop_summary",
-    description:
-      "Today's orders and revenue, delivery status counts, cash-on-delivery money still to collect, and what is low on stock. Takes no arguments — use it for any general 'how are we doing' question.",
-    parametersJsonSchema: {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "stale_orders",
-    description:
-      "Open orders that have not changed status in a while — the ones being forgotten. Defaults to 3 days.",
-    parametersJsonSchema: {
-      type: "object",
-      properties: {
-        days: {
+        stockBelow: {
           type: "integer",
-          description: "Minimum days without a status change. Defaults to 3.",
+          description:
+            "List only products with fewer than this many units left. Pass the number staff name (\"under 20\" is 20); pass 10 when they ask what is running low without naming one.",
         },
       },
       required: [],
@@ -107,74 +68,86 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
 /** Rows returned when a product search is narrowed. Browsing is uncapped. */
 const MAX_STOCK_MATCHES = 10;
 
-const DEFAULT_STALE_DAYS = 3;
+/**
+ * What "running low" means when nobody says a number. The tool description
+ * asks the model for it, but a model that asks for the low-stock list and
+ * forgets the threshold means the question, not a browse of the catalogue —
+ * so the default lives here as well, where it can't be forgotten.
+ */
+const DEFAULT_LOW_STOCK = 10;
 
 function table(headers: string[], rows: string[][]): string {
+  // A pipe inside a cell ends the cell, and product names and addresses are
+  // typed by hand — one stray "|" would shear the rest of the row off.
+  const cell = (value: string) => value.replace(/\|/g, "\\|");
+
   return [
-    `| ${headers.join(" | ")} |`,
+    `| ${headers.map(cell).join(" | ")} |`,
     `| ${headers.map(() => "---").join(" | ")} |`,
-    ...rows.map((row) => `| ${row.join(" | ")} |`),
+    ...rows.map((row) => `| ${row.map(cell).join(" | ")} |`),
   ].join("\n");
 }
 
 /**
- * Timestamps and money are formatted here rather than handed over raw.
+ * One order as a finished bullet list — the same eight lines, in the same
+ * order, every time.
  *
- * JSON.stringify turns a Date into UTC, and Yangon is UTC+06:30 — asking the
- * model to shift it is asking it to get evening orders wrong by a day. Money
- * goes the same way: a formatted string is one it can quote back, where an
- * integer is one it has to render, and it renders kyats inconsistently.
+ * It used to hand the model JSON to narrate. What came back was a retelling
+ * that renamed every field in Burmese and reordered them turn by turn, so no
+ * two lookups looked alike and staff had to read the label before they could
+ * find the phone number. Fixed lines can't drift, and the labels stay English
+ * to match the columns on the order page they came from.
+ *
+ * A list rather than a table: the values here are one per field, and a
+ * two-column table of them is a lot of rule-work to read on a phone.
+ * list_products stays a table — that one is genuinely a grid.
+ *
+ * Timestamps and money are formatted here rather than handed over raw. Yangon
+ * is UTC+06:30, so printing a Date raw is getting evening orders wrong by a
+ * day; kyats are an integer count, so something has to render them, and doing
+ * it here renders them the one way.
  */
 async function lookupOrder(code: string): Promise<string> {
   const order = await getOrderByCode(code);
-  if (!order) return `No order found with code ${code}.`;
+  if (!order) return `${code} ဆိုတဲ့ order မတွေ့ပါ။`;
 
-  return JSON.stringify({
-    code: order.code,
-    status: order.status,
-    paymentMethod: PAYMENT_METHOD[order.paymentMethod],
-    total: formatKyat(order.total),
-    placedAt: formatDateTime(order.placedAt),
-    note: order.note,
-    customerName: order.customerName,
-    phone: order.phone,
-    city: order.city,
-    address: order.address,
-    items: order.items.map(({ name, unitPrice, quantity }) => ({
-      name,
-      unitPrice: formatKyat(unitPrice),
-      quantity,
-    })),
-    statusEvents: order.statusEvents.map(({ status, changedAt, note }) => ({
-      status,
-      changedAt: formatDateTime(changedAt),
-      note,
-    })),
-  });
+  // SKU, not the name, by request — it is what the shelf and the product table
+  // are labelled with. The name is the fallback for the lines that have no SKU
+  // to show: an ad-hoc line, or one written before the column existed.
+  const items = order.items
+    .map(({ name, sku, quantity }) => `  - ${sku || name} ×${quantity}`)
+    .join("\n");
+
+  return [
+    `**${order.code}**`,
+    "",
+    `- **Date:** ${formatDateTime(order.placedAt)}`,
+    `- **Name:** ${order.customerName}`,
+    `- **Phone:** ${order.phone}`,
+    `- **Address:** ${order.address}၊ ${order.city}`,
+    `- **Status:** ${DELIVERY_STATUS[order.status].label}`,
+    "- **Items:**",
+    items,
+    `- **Total:** ${formatKyat(order.total)}`,
+    `- **Note:** ${order.note.trim() || "—"}`,
+  ].join("\n");
 }
 
-async function listProductsTable(query?: string, lowStock?: boolean): Promise<string> {
-  if (lowStock) {
-    const products = await listLowStockProducts();
-    if (products.length === 0) {
-      return `ကုန်တော့မယ့် ပစ္စည်း မရှိပါ — အားလုံး ${LOW_STOCK_THRESHOLD} ခုအထက် ရှိပါတယ်။`;
-    }
+async function listProductsTable(query?: string, stockBelow?: number): Promise<string> {
+  if (stockBelow !== undefined) {
+    const products = await listProductsBelowStock(stockBelow);
 
-    // "What's running out" is only half the restock question; the other half
-    // is how fast it leaves the shelf. Five units is a crisis at 40 sold a
-    // month and a non-event at two. Fetched only on this branch — browsing
-    // the catalogue doesn't need it and it costs a second query.
-    const sold = await unitsSoldByProduct(30);
-
-    return table(
-      ["Name", "SKU", "Stock", "Sold 30d"],
-      products.map((product) => [
-        product.name,
-        product.sku,
-        String(product.stock),
-        String(sold.get(product.id) ?? 0),
-      ]),
-    );
+    return products.length === 0
+      ? `Stock ${stockBelow} အောက် ရောက်နေတဲ့ ပစ္စည်း မရှိပါ။`
+      : table(
+          ["Name", "SKU", "Price", "Stock"],
+          products.map((product) => [
+            product.name,
+            product.sku,
+            formatKyat(product.price),
+            String(product.stock),
+          ]),
+        );
   }
 
   const q = query?.trim();
@@ -203,52 +176,16 @@ async function listProductsTable(query?: string, lowStock?: boolean): Promise<st
 }
 
 /**
- * The four numbers staff open the dashboard for, in one round trip. Written
- * in Burmese here because it reaches the client without passing back through
- * the model, so nothing downstream translates it.
+ * `undefined` when the model didn't ask for the low-stock list at all, and the
+ * default when it asked but sent something unusable — `true`, "ten", a zero.
+ * Falling back to a browse of the whole catalogue there would answer a
+ * question nobody asked.
  */
-async function shopSummary(): Promise<string> {
-  const [today, counts, cod, low] = await Promise.all([
-    todaysOrders(),
-    countOrdersByStatus(),
-    codOutstanding(),
-    listLowStockProducts(),
-  ]);
+function stockThreshold(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === false) return undefined;
 
-  const statuses = DELIVERY_STATUS_KEYS.map(
-    (key) => `${DELIVERY_STATUS[key].label} ${counts[key]}`,
-  ).join(" · ");
-
-  return [
-    `**ဒီနေ့ (${formatDate(new Date())})** — order ${today.count} ခု၊ ${formatKyat(today.total)}`,
-    `**Delivery status** — ${statuses}`,
-    `**COD ကောက်ရန်** — order ${cod.count} ခု၊ ${formatKyat(cod.total)}`,
-    low.length === 0
-      ? "**Stock** — ကုန်တော့မယ့် ပစ္စည်း မရှိပါ။"
-      : `**Stock နည်းနေ** — ${low.map((p) => `${p.name} (${p.stock})`).join("၊ ")}`,
-  ].join("\n\n");
-}
-
-async function staleOrdersTable(days?: number): Promise<string> {
-  // A model that decides "a while" means zero days would return every open
-  // order, which is the list staff already have.
-  const minDays = typeof days === "number" && days > 0 ? Math.floor(days) : DEFAULT_STALE_DAYS;
-  const orders = await staleOrders(minDays);
-
-  if (orders.length === 0) {
-    return `${minDays} ရက်ကျော် မရွေ့ဘဲ ရပ်နေတဲ့ order မရှိပါ။`;
-  }
-
-  return table(
-    ["Code", "Status", "ရပ်နေချိန်", "Customer", "Total"],
-    orders.map((order) => [
-      order.code,
-      DELIVERY_STATUS[order.status].label,
-      `${order.daysStalled} ရက်`,
-      order.customerName,
-      formatKyat(order.total),
-    ]),
-  );
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_LOW_STOCK;
 }
 
 export async function runTool(name: string, input: unknown): Promise<string> {
@@ -260,13 +197,7 @@ export async function runTool(name: string, input: unknown): Promise<string> {
     case "list_products":
       return listProductsTable(
         args.query ? String(args.query) : undefined,
-        args.lowStock === true,
-      );
-    case "shop_summary":
-      return shopSummary();
-    case "stale_orders":
-      return staleOrdersTable(
-        typeof args.days === "number" ? args.days : Number(args.days) || undefined,
+        stockThreshold(args.stockBelow),
       );
     default:
       return `Unknown tool: ${name}`;

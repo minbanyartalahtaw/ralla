@@ -43,20 +43,19 @@ export async function listProducts(query?: string): Promise<Product[]> {
   });
 }
 
-/** At or below this many units, a product counts as running out. */
-export const LOW_STOCK_THRESHOLD = 5;
-
 /**
- * Active products running out, emptiest first.
+ * Active products under `threshold` units, emptiest first — the restock list.
+ *
+ * Strictly under, not at: staff ask for "under 10" and mean the nine, and a
+ * threshold that quietly included ten would be answering a different question
+ * from the one they typed.
  *
  * Active only, unlike listProducts(): a discontinued line sitting at zero is
  * not a restock decision, it is just discontinued.
  */
-export async function listLowStockProducts(
-  threshold = LOW_STOCK_THRESHOLD,
-): Promise<Product[]> {
+export async function listProductsBelowStock(threshold: number): Promise<Product[]> {
   return prisma.product.findMany({
-    where: { isActive: true, stock: { lte: threshold } },
+    where: { isActive: true, stock: { lt: threshold } },
     orderBy: [{ stock: "asc" }, { name: "asc" }],
   });
 }

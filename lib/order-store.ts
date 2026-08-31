@@ -54,8 +54,6 @@ function isDuplicateCode(error: unknown): boolean {
  */
 const CODE_ATTEMPTS = 5;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export type NewOrderLine = {
   /** Null for an ad-hoc line that isn't in the product catalog. */
   productId: number | null;
@@ -376,126 +374,6 @@ export async function ordersByCity(): Promise<LabelledCount[]> {
   });
 
   return rows.map((row) => ({ label: row.city, value: row._count._all }));
-}
-
-/**
- * The instant today began in Yangon.
- *
- * Myanmar is UTC+06:30 with no DST, so today's local date plus that fixed
- * offset is exact. Comparing against a UTC midnight instead would count
- * everything placed before 06:30 as yesterday's.
- */
-function yangonDayStart(): Date {
-  return new Date(`${formatDate(new Date())}T00:00:00+06:30`);
-}
-
-/** Orders placed today, and what they came to. */
-export async function todaysOrders(): Promise<{ count: number; total: number }> {
-  const since = yangonDayStart();
-
-  // The count takes cancelled orders, the money doesn't: an order that came in
-  // and was voided still came in, but it never became revenue. Same split as
-  // revenueByDay(), so the two can't tell different stories about one day.
-  const [count, revenue] = await Promise.all([
-    prisma.order.count({ where: { placedAt: { gte: since } } }),
-    prisma.order.aggregate({
-      where: { placedAt: { gte: since }, status: { not: "cancelled" } },
-      _sum: { total: true },
-    }),
-  ]);
-
-  return { count, total: revenue._sum.total ?? 0 };
-}
-
-/**
- * Money the courier is still holding: delivered, but paid cash on delivery.
- * The goods are gone and the kyats haven't arrived, which is the one balance
- * no page in the app currently shows.
- */
-export async function codOutstanding(): Promise<{ count: number; total: number }> {
-  const result = await prisma.order.aggregate({
-    where: { paymentMethod: "cod", status: "delivered" },
-    _count: { _all: true },
-    _sum: { total: true },
-  });
-
-  return { count: result._count._all, total: result._sum.total ?? 0 };
-}
-
-export type StaleOrder = {
-  code: string;
-  status: DeliveryStatus;
-  customerName: string;
-  total: number;
-  /** Whole days since the order last changed status. */
-  daysStalled: number;
-};
-
-/**
- * Orders that have stopped moving: still open, and last advanced more than
- * `minDays` ago. Most stalled first — the list already shows what is new, only
- * this says what has been forgotten.
- *
- * "Last moved" is the newest status event, not `updatedAt`: editing an order's
- * note touches the row without advancing the delivery, and an order whose note
- * was fixed yesterday is exactly as stuck as it was.
- *
- * Delivered and cancelled orders are finished, so they can't be stale.
- */
-export async function staleOrders(
-  minDays = 3,
-  limit = 15,
-): Promise<StaleOrder[]> {
-  const rows = await prisma.order.findMany({
-    where: { status: { notIn: ["delivered", "cancelled"] } },
-    include: { statusEvents: { orderBy: { changedAt: "desc" }, take: 1 } },
-  });
-
-  const now = Date.now();
-
-  return rows
-    .map((order) => ({
-      code: order.code,
-      status: order.status,
-      customerName: order.customerName,
-      total: order.total,
-      // createOrder() writes a first status event in the same transaction, so
-      // the fallback only covers rows predating that.
-      daysStalled: Math.floor(
-        (now - (order.statusEvents[0]?.changedAt ?? order.placedAt).getTime()) /
-          DAY_MS,
-      ),
-    }))
-    .filter((order) => order.daysStalled >= minDays)
-    .sort((a, b) => b.daysStalled - a.daysStalled)
-    .slice(0, limit);
-}
-
-/**
- * Units sold per product over the last `days`, cancelled orders excluded.
- *
- * Keyed by product id, so an ad-hoc line that was never in the catalog — and a
- * line whose product has since been deleted — contributes nothing, which is
- * right: neither can be restocked.
- */
-export async function unitsSoldByProduct(
-  days: number,
-): Promise<Map<number, number>> {
-  const since = new Date(Date.now() - days * DAY_MS);
-
-  const rows = await prisma.orderItem.groupBy({
-    by: ["productId"],
-    where: { order: { placedAt: { gte: since }, status: { not: "cancelled" } } },
-    _sum: { quantity: true },
-  });
-
-  return new Map(
-    rows.flatMap((row) =>
-      row.productId === null
-        ? []
-        : [[row.productId, row._sum.quantity ?? 0] as const],
-    ),
-  );
 }
 
 export async function getOrder(id: number): Promise<OrderWithItems | null> {

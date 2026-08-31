@@ -54,18 +54,22 @@ const MARKDOWN_COMPONENTS: Components = {
 
 const PLACEHOLDER = "Ask anything ...";
 
-// Fixed wording, not AI-generated — quick-send shortcuts for the questions
-// staff ask most, shown above the input. Ordered by how often a shift starts
-// with them, because the row scrolls sideways and only the first two or three
-// are on screen. The last is the odd one out: it asks what Haikuu can do at
-// all, which is only ever useful once.
-const SUGGESTIONS = [
-  "ဒီနေ့ အခြေအနေ",
-  "ဘာတွေ ကုန်တော့မလဲ",
-  "ကြာနေတဲ့ Order တွေ",
-  "ပစ္စည်း Stock တွေပြပေး",
-  "Order ရှာပေးပါ",
-  "ဘာတွေကူညီပေးနိုင်လည်း",
+// Fixed wording, not AI-generated — shortcuts for the questions staff ask
+// most, shown above the input. Ordered by how often a shift starts with them,
+// because the row scrolls sideways and only the first two or three are on
+// screen. The last is the odd one out: it asks what Haikuu can do at all,
+// which is only ever useful once.
+//
+// They only cover the two lookups that exist (see lib/ai/tools.ts) — a chip
+// for something Haikuu can't do is a button whose answer is always "I can't".
+// The order one `fill`s the box instead of sending, because a lookup needs a
+// code: sending "find me an order" on its own only buys a round trip that
+// asks which one.
+const SUGGESTIONS: { label: string; text: string; fill?: boolean }[] = [
+  { label: "ဘာတွေ ကုန်တော့မလဲ", text: "Stock နည်းနေတဲ့ ပစ္စည်းတွေ ပြပါ" },
+  { label: "ပစ္စည်းစာရင်း ပြပါ", text: "ပစ္စည်းစာရင်း အားလုံး ပြပါ" },
+  { label: "Order ရှာမယ်", text: "RL-", fill: true },
+  { label: "ဘာတွေကူညီပေးနိုင်လည်း", text: "ဘာတွေကူညီပေးနိုင်လည်း" },
 ];
 
 export function AssistantSheet() {
@@ -75,6 +79,7 @@ export function AssistantSheet() {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
   // `open` is a dependency too, not just new messages, so reopening a past
   // conversation lands on the latest message instead of wherever it was
@@ -239,21 +244,34 @@ export function AssistantSheet() {
             <div className="no-scrollbar mb-2 flex flex-nowrap gap-1.5 overflow-x-auto">
               {SUGGESTIONS.map((suggestion) => (
                 <Button
-                  key={suggestion}
+                  key={suggestion.label}
                   type="button"
                   variant="outline"
                   size="sm"
                   className="h-auto shrink-0 rounded-full px-3 py-1"
-                  onClick={() => void send(suggestion)}
+                  onClick={() => {
+                    if (!suggestion.fill) {
+                      void send(suggestion.text);
+                      return;
+                    }
+                    // Caret after the prefix, not before it — the chip is
+                    // there to save typing the "RL-", so the next keystroke
+                    // has to continue the code.
+                    setInput(suggestion.text);
+                    const box = inputRef.current;
+                    box?.focus();
+                    requestAnimationFrame(() => box?.setSelectionRange(box.value.length, box.value.length));
+                  }}
                   disabled={pending}
                 >
-                  {suggestion}
+                  {suggestion.label}
                 </Button>
               ))}
             </div>
 
             <div className="flex items-center gap-1 rounded-xl border border-input bg-input/20 p-1.5 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 dark:bg-input/30">
               <Textarea
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}

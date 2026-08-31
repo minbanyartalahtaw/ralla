@@ -33,16 +33,19 @@ import { StatusSelect } from "./status-select";
  * Semantic tokens throughout (`bg-card`, `text-muted-foreground`), so
  * light/dark mode comes for free.
  *
- * The item count is a `shrink-0` span beside the truncating name list, not
- * trailing text inside it — inside it, a card with enough items lost the count
- * to the ellipsis, so the same figure was there on one card and missing on the
- * next. Only the names give way now.
+ * The item row names nothing at all: `Total 6 items`. Listing what was in the
+ * order made the row as long as the order was big, and on a card that already
+ * fits the screen exactly, the longest of them is what pushed past the edge and
+ * took the total with it. Naming one product instead only moved the problem —
+ * whichever one it named, the row either misdescribed an order of several or
+ * needed a marker saying so. The count is the one fact about the contents that
+ * is short, true of every order, and the same length on all of them, so it is
+ * the only one the card carries; what the items actually are is a click away on
+ * the detail page.
  *
- * The two share a nested flex box that holds the row's left half, so the count
- * sits *against* the names it counts instead of being flung to the total's
- * edge by a short one. It only ends up over there when the names have taken
- * the whole half and pushed it — which is the one case where there is nowhere
- * else for it to go.
+ * Spelled out rather than punctuated (`· 6`) because a bare figure next to a
+ * money figure invites reading it as money. It is also the row's whole left
+ * half now, so nothing can shove it out of alignment down the column.
  *
  * The cards float: the list around them draws no frame of its own, and each
  * card carries a shadow instead. The shadow is tinted darker in dark mode,
@@ -77,7 +80,7 @@ export function OrderCards({
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {orders.map((o) => {
-        const itemNames = o.items.map((i) => i.name).join(", ");
+        const units = itemCount(o.items);
 
         return (
           <li
@@ -143,9 +146,8 @@ export function OrderCards({
                 sits on this row for the right-edge alignment, not because
                 it's the least important figure here. */}
             <div className="mt-2 flex items-baseline gap-2 text-[11px] text-muted-foreground/70">
-              <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                <span className="min-w-0 truncate">{itemNames}</span>
-                <span className="numeric shrink-0">· {itemCount(o.items)}</span>
+              <span className="numeric min-w-0 flex-1 truncate">
+                Total {units} {units === 1 ? "item" : "items"}
               </span>
               <span className="numeric shrink-0 font-mono text-sm font-medium text-foreground">
                 {formatKyat(o.total)}

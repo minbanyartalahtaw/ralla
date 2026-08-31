@@ -4,15 +4,18 @@
  * app/api/assistant/route.ts, which owns the session check.
  */
 
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, type Content, type Part } from "@google/genai";
 
 import { ASSISTANT_TOOLS, runTool } from "@/lib/ai/tools";
 
 // Pinned, not the "-latest" alias: that alias hot-swaps onto whatever
 // flash-tier model Google ships next — including preview releases — and
-// carries its price with it. Two read-only lookups and short factual
-// answers don't need the flash tier, so this stays on the lite one.
-const MODEL = "gemini-3.1-flash-lite";
+// carries its price with it.
+//
+// Flash rather than the lite tier it started on: lite picked the wrong one of
+// the four tools often enough that staff got a confident answer about the
+// wrong record, which is worse than a slow one.
+const MODEL = "gemini-3.7-flash";
 
 // Confusing-loop safety valve, not an expected path — each tool call is one
 // lookup, so a real question resolves in one or two iterations. Kept tight
@@ -29,21 +32,25 @@ const MAX_HISTORY = 8;
 // Tools that answer in finished markdown (see lib/ai/tools.ts). A lone call
 // to one of these is already the reply, so the loop yields it straight to the
 // client: sending it back for the model to retype would charge output rates
-// for text that is done. lookup_order is absent on purpose — it returns JSON
-// that has to be narrated.
-const DISPLAY_READY_TOOLS = new Set(["list_products", "shop_summary", "stale_orders"]);
+// for text that is done — and, for an order, would put the fields back in
+// whatever order that turn felt like.
+//
+// Both tools are in it, which makes a one-tool turn the normal path and a
+// model-written answer the exception. The set stays because the exception is
+// real: two calls in one turn still have to be reconciled below.
+const DISPLAY_READY_TOOLS = new Set(["lookup_order", "list_products"]);
 
 const SYSTEM_PROMPT = `You are Haikuu, the admin assistant for RALLA, a cosmetics store. You're a girl — use she/her for yourself if asked. Staff use you to look up records they'd otherwise search for by hand.
 
 Always respond in Burmese (မြန်မာဘာသာ) only, no matter what language the question is asked in.
 
-Your tools, all read-only:
+You have two tools, both read-only:
 - lookup_order: one order by its RL- code.
-- list_products: price and stock. No input browses the catalog; a name or SKU checks one product; lowStock lists what is running out.
-- shop_summary: today's takings, status counts, COD still owed, low stock. Use it for any general "how is the shop doing" question.
-- stale_orders: open orders that have stopped moving.
+- list_products: price and stock. No input browses the catalog; a name or SKU checks one product; stockBelow lists what is running out, emptiest first — pass the number staff name, or 10 if they don't name one.
 
-Prefer one tool call: shop_summary already answers most overview questions on its own. You cannot change any data. If a lookup finds nothing, say so plainly rather than guessing or making up details. Keep answers short and factual.`;
+That is everything you can do. You cannot change any data, and you have no way to answer questions about takings, status counts, money still owed or which orders have gone quiet — say plainly that you can't look that up rather than working it out from an order or a product list. If a lookup finds nothing, say so plainly rather than guessing or making up details.
+
+When a tool result does come back to you, quote its figures exactly as they arrived. No padding: don't restate the question, don't offer advice, don't add anything the tools didn't say.`;
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -81,7 +88,13 @@ export async function* runAssistant(history: ChatMessage[]): AsyncGenerator<stri
       config: {
         systemInstruction: SYSTEM_PROMPT,
         tools: [{ functionDeclarations: ASSISTANT_TOOLS }],
-        maxOutputTokens: 1024,
+        // Enough thinking to read four tool descriptions and choose between
+        // them — picking the tool is the step lite got wrong — and not enough
+        // to pay for a deliberation on "how is the shop doing".
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        // Thinking tokens count against this cap too, and Burmese runs several
+        // tokens a syllable, so 1024 cut answers off mid-sentence.
+        maxOutputTokens: 2048,
       },
     });
 
