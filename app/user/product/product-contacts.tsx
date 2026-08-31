@@ -3,40 +3,22 @@ import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 import { ProductEditSheet } from "./product-edit-sheet";
 import type { Product } from "@/lib/products";
-import { PRODUCT_ACTIVITY, productActivity } from "@/lib/products";
-
-function groupKey(name: string): string {
-  const ch = name.trim().charAt(0).toUpperCase();
-  if (!ch) return "#";
-  return /^[A-Z]$/.test(ch) ? ch : "#";
-}
-
-function sortByName(a: Product, b: Product): number {
-  return a.name.localeCompare(b.name);
-}
+import {
+  PRODUCT_ACTIVITY,
+  groupProductsByLetter,
+  productActivity,
+} from "@/lib/products";
 
 export function ProductContacts({ products }: { products: Product[] }) {
-  const sorted = [...products].sort(sortByName);
+  // Shared with the new-order picker, so both screens band the catalogue the
+  // same way — see groupProductsByLetter().
+  const groups = groupProductsByLetter(products);
 
-  const groups = new Map<string, Product[]>();
-  for (const p of sorted) {
-    const k = groupKey(p.name);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(p);
-  }
-
-  const letters = [...groups.keys()].sort((a, b) => {
-    if (a === "#") return 1;
-    if (b === "#") return -1;
-    return a.localeCompare(b);
-  });
-
-  if (letters.length === 0) return null;
+  if (groups.length === 0) return null;
 
   return (
     <div>
-      {letters.map((letter, i) => {
-        const items = groups.get(letter)!;
+      {groups.map(({ letter, items }, i) => {
         return (
           <section key={letter}>
             {/* The tinted band is the whole separator — no rule between groups,

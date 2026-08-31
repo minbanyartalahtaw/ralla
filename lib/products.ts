@@ -63,6 +63,62 @@ export function productActivity(isActive: boolean): ProductActivity {
 }
 
 /**
+ * One initial-letter band of the product list: `{ letter: "L", items: [...] }`.
+ *
+ * `items` is the field name Base UI's Combobox looks for to recognise a group,
+ * so the same shape feeds both the products page and the order form's picker
+ * without either having to reshape it.
+ */
+export type ProductGroup = { letter: string; items: Product[] };
+
+/**
+ * Anything that doesn't start with a Latin letter — a Burmese name, a digit, a
+ * bare SKU — files under `#`. Grouping those by their own first character would
+ * make a band per name and defeat the point.
+ */
+function groupLetter(name: string): string {
+  const ch = name.trim().charAt(0).toUpperCase();
+  return /^[A-Z]$/.test(ch) ? ch : "#";
+}
+
+/**
+ * Products in initial-letter bands, A–Z with `#` last.
+ *
+ * Shared so the products page and the new-order picker present one catalogue
+ * the same way: staff learn where a product sits on the list they browse, and
+ * the picker they type into has to reward that memory rather than reshuffle it.
+ *
+ * Sorted here rather than trusted from the caller. Postgres orders by the
+ * column's collation and `localeCompare` by the runtime's, and the two disagree
+ * about case and punctuation — sorting in JS is what makes the two screens
+ * agree, whichever query fed them.
+ *
+ * SKU breaks the tie, and it has to: a name is not unique here. Four sizes of
+ * one product are four rows reading `AFDF အကြီး`, so comparing names alone
+ * returns 0 for all of them and leaves a stable sort holding whatever order the
+ * query happened to return — which is not the same order for two queries with
+ * different filters, so the two screens listed the same four products
+ * differently. SKU is unique, so appending it makes the order total.
+ */
+export function groupProductsByLetter(products: Product[]): ProductGroup[] {
+  const groups = new Map<string, Product[]>();
+
+  const sorted = [...products].sort(
+    (a, b) => a.name.localeCompare(b.name) || a.sku.localeCompare(b.sku),
+  );
+
+  for (const product of sorted) {
+    const letter = groupLetter(product.name);
+    if (!groups.has(letter)) groups.set(letter, []);
+    groups.get(letter)!.push(product);
+  }
+
+  return [...groups.keys()]
+    .sort((a, b) => (a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b)))
+    .map((letter) => ({ letter, items: groups.get(letter)! }));
+}
+
+/**
  * SKUs are compared exactly, so they're stored in one canonical shape:
  * uppercase, trimmed, inner whitespace collapsed to dashes. Without this,
  * `lip-vm-01` and `LIP-VM-01` would be two different products.
