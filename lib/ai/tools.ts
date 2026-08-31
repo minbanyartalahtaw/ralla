@@ -1,22 +1,27 @@
 /**
- * The assistant's tool surface: two read-only lookups, nothing that mutates
- * data. See lib/ai/assistant.ts for the loop that calls these.
+ * The assistant's tool surface: three read-only lookups and the clock, nothing
+ * that mutates data. See lib/ai/assistant.ts for the loop that calls these.
  *
- * Two, by request — shop_summary and stale_orders were dropped as the surface
- * got hard to hold in one head, along with list_products' lowStock filter, and
- * no customer lookup was ever added. All of it is in the history if it comes
- * back.
+ * It is kept small on purpose — shop_summary and stale_orders were dropped as
+ * the surface got hard to hold in one head, along with list_products' lowStock
+ * filter, and no customer lookup was ever added. All of it is in the history if
+ * it comes back.
  *
- * Both answer in finished markdown rather than raw data, so the loop can yield
- * them to the client as-is. Relaying a table through a second model turn only
- * pays the model to retype it as output tokens, which cost six times what
- * input does.
+ * The lookups answer in finished markdown rather than raw data, so the loop
+ * can yield them to the client as-is. Relaying a table through a second model
+ * turn only pays the model to retype it as output tokens, which cost six times
+ * what input does. current_time is the exception — see the note on it below.
  */
 
 import type { FunctionDeclaration } from "@google/genai";
 
-import { DELIVERY_STATUS, formatDateTime, formatKyat } from "@/lib/orders";
-import { getOrderByCode } from "@/lib/order-store";
+import {
+  DELIVERY_STATUS,
+  TIME_ZONE,
+  formatDateTime,
+  formatKyat,
+} from "@/lib/orders";
+import { getOrderByCode, salesOnDay } from "@/lib/order-store";
 import {
   findProductBySku,
   listProducts,
@@ -36,9 +41,39 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
     parametersJsonSchema: {
       type: "object",
       properties: {
-        code: { type: "string", description: "Order invoice code, e.g. RL-260804TXI" },
+        code: {
+          type: "string",
+          description: "Order invoice code, e.g. RL-260804TXI",
+        },
       },
       required: ["code"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "current_time",
+    description:
+      "The date and time right now in Myanmar (Asia/Yangon). Call it before answering anything that depends on today's date or on how long ago something happened.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "daily_sales",
+    description:
+      "Orders taken and money made on ONE Yangon calendar day. It totals a single day and cannot add up a week, a month or a range — for \"yesterday\" or any other relative day, call current_time first and work out the date.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description: "The day to total, as YYYY-MM-DD, e.g. 2026-08-30",
+        },
+      },
+      required: ["date"],
       additionalProperties: false,
     },
   },
@@ -56,7 +91,7 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
         stockBelow: {
           type: "integer",
           description:
-            "List only products with fewer than this many units left. Pass the number staff name (\"under 20\" is 20); pass 10 when they ask what is running low without naming one.",
+            'List only products with fewer than this many units left. Pass the number staff name ("under 20" is 20); pass 10 when they ask what is running low without naming one.',
         },
       },
       required: [],
@@ -85,6 +120,73 @@ function table(headers: string[], rows: string[][]): string {
     `| ${headers.map(cell).join(" | ")} |`,
     `| ${headers.map(() => "---").join(" | ")} |`,
     ...rows.map((row) => `| ${row.map(cell).join(" | ")} |`),
+  ].join("\n");
+}
+
+/**
+ * The clock the shop runs on.
+ *
+ * Not a fact the model can be left to supply: it knows only what its training
+ * ended on, and the server it runs on may sit in any zone, so "today" is wrong
+ * twice over unless something asks. It resolves through TIME_ZONE like every
+ * other timestamp in the app — Myanmar is UTC+06:30, so anything before 06:30
+ * local lands on the previous UTC day.
+ *
+ * Deliberately *not* display-ready, unlike the two lookups. A clock reading is
+ * as often a step towards an answer as the answer itself, and yielding it
+ * straight to the client would end the turn showing the time where a sentence
+ * about an order was wanted.
+ *
+ * The weekday rides along because staff say "Monday" far more than they say a
+ * date, and it costs one word to save a second question.
+ */
+function currentTime(): string {
+  const now = new Date();
+  const weekday = now.toLocaleDateString("en-US", {
+    timeZone: TIME_ZONE,
+    weekday: "long",
+  });
+
+  return `${formatDateTime(now)} (${weekday}, Myanmar time)`;
+}
+
+/**
+ * One day's takings: two figures, and the day they belong to.
+ *
+ * The date is echoed back with its weekday because the model worked it out from
+ * current_time rather than being told it — if it lands a day off, the answer
+ * says so on its own face instead of quietly reporting the wrong Tuesday. That
+ * is also why the reply is only ever one day: a range would be several tool
+ * calls, and each one is another chance to slip a day.
+ *
+ * Cancelled orders are in neither figure — see salesOnDay().
+ */
+async function dailySales(date: string): Promise<string> {
+  const day = date.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return `'${date}' ကို ရက်စွဲအဖြစ် မဖတ်နိုင်ပါ။ YYYY-MM-DD ပုံစံ လိုပါတယ်။`;
+  }
+
+  let sales;
+  try {
+    sales = await salesOnDay(day);
+  } catch {
+    // Shaped like a date but isn't one — 2026-02-31, say.
+    return `'${date}' ဆိုတဲ့ ရက်စွဲ မရှိပါ။`;
+  }
+
+  const weekday = new Date(`${day}T00:00:00+06:30`).toLocaleDateString("en-US", {
+    timeZone: TIME_ZONE,
+    weekday: "long",
+  });
+
+  if (sales.orders === 0) return `**${day}** (${weekday}) မှာ order မရှိပါ။`;
+
+  return [
+    `**${day}** (${weekday})`,
+    "",
+    `- **Total orders:** ${sales.orders}`,
+    `- **Total price:** ${formatKyat(sales.total)}`,
   ].join("\n");
 }
 
@@ -133,7 +235,10 @@ async function lookupOrder(code: string): Promise<string> {
   ].join("\n");
 }
 
-async function listProductsTable(query?: string, stockBelow?: number): Promise<string> {
+async function listProductsTable(
+  query?: string,
+  stockBelow?: number,
+): Promise<string> {
   if (stockBelow !== undefined) {
     const products = await listProductsBelowStock(stockBelow);
 
@@ -155,13 +260,17 @@ async function listProductsTable(query?: string, stockBelow?: number): Promise<s
   let products;
   if (q) {
     const exact = await findProductBySku(q);
-    products = exact ? [exact] : (await listProducts(q)).slice(0, MAX_STOCK_MATCHES);
+    products = exact
+      ? [exact]
+      : (await listProducts(q)).slice(0, MAX_STOCK_MATCHES);
   } else {
     products = await listProducts();
   }
 
   if (products.length === 0) {
-    return q ? `'${q}' နဲ့ကိုက်ညီတဲ့ ပစ္စည်း မတွေ့ပါ။` : "ပစ္စည်းစာရင်းမှာ ဘာမှမရှိသေးပါ။";
+    return q
+      ? `'${q}' နဲ့ကိုက်ညီတဲ့ ပစ္စည်း မတွေ့ပါ။`
+      : "ပစ္စည်းစာရင်းမှာ ဘာမှမရှိသေးပါ။";
   }
 
   return table(
@@ -182,7 +291,8 @@ async function listProductsTable(query?: string, stockBelow?: number): Promise<s
  * question nobody asked.
  */
 function stockThreshold(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === false) return undefined;
+  if (value === undefined || value === null || value === false)
+    return undefined;
 
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_LOW_STOCK;
@@ -194,6 +304,10 @@ export async function runTool(name: string, input: unknown): Promise<string> {
   switch (name) {
     case "lookup_order":
       return lookupOrder(String(args.code ?? ""));
+    case "current_time":
+      return currentTime();
+    case "daily_sales":
+      return dailySales(String(args.date ?? ""));
     case "list_products":
       return listProductsTable(
         args.query ? String(args.query) : undefined,

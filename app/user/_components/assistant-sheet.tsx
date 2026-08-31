@@ -60,14 +60,17 @@ const PLACEHOLDER = "Ask anything ...";
 // screen. The last is the odd one out: it asks what Haikuu can do at all,
 // which is only ever useful once.
 //
-// They only cover the two lookups that exist (see lib/ai/tools.ts) — a chip
-// for something Haikuu can't do is a button whose answer is always "I can't".
-// The order one `fill`s the box instead of sending, because a lookup needs a
-// code: sending "find me an order" on its own only buys a round trip that
-// asks which one.
+// They only cover the lookups that exist (see lib/ai/tools.ts) — a chip for
+// something Haikuu can't do is a button whose answer is always "I can't". The
+// order one `fill`s the box instead of sending, because a lookup needs a code:
+// sending "find me an order" on its own only buys a round trip that asks which
+// one. Yesterday's takings needs no such thing — the date is Haikuu's to work
+// out from current_time — so it sends, and it leads: it is the question a
+// shift opens with.
 const SUGGESTIONS: { label: string; text: string; fill?: boolean }[] = [
-  { label: "ဘာတွေ ကုန်တော့မလဲ", text: "Stock နည်းနေတဲ့ ပစ္စည်းတွေ ပြပါ" },
-  { label: "ပစ္စည်းစာရင်း ပြပါ", text: "ပစ္စည်းစာရင်း အားလုံး ပြပါ" },
+  { label: "မနေ့က ဘယ်လောက်ရောင်းရလဲ", text: "မနေ့က ဘယ်လောက်ရောင်းရလဲ" },
+  { label: "Stock ၁၀ ခုအောက်ပစ္စည်းတွေပြပေးပါ", text: "Stock ၁၀ ခုအောက်ပစ္စည်းတွေပြပေးပါ" },
+  { label: "ပစ္စည်းစာရင်း အားလုံး ပြပါ", text: "ပစ္စည်းစာရင်း အားလုံး ပြပါ" },
   { label: "Order ရှာမယ်", text: "RL-", fill: true },
   { label: "ဘာတွေကူညီပေးနိုင်လည်း", text: "ဘာတွေကူညီပေးနိုင်လည်း" },
 ];

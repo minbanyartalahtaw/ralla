@@ -1,6 +1,6 @@
 /**
  * The admin assistant: a manual tool-use loop over Gemini, scoped to the
- * two read-only lookups in lib/ai/tools.ts. Called from
+ * read-only tools in lib/ai/tools.ts. Called from
  * app/api/assistant/route.ts, which owns the session check.
  */
 
@@ -35,20 +35,25 @@ const MAX_HISTORY = 8;
 // for text that is done — and, for an order, would put the fields back in
 // whatever order that turn felt like.
 //
-// Both tools are in it, which makes a one-tool turn the normal path and a
-// model-written answer the exception. The set stays because the exception is
-// real: two calls in one turn still have to be reconciled below.
-const DISPLAY_READY_TOOLS = new Set(["lookup_order", "list_products"]);
+// All three lookups are in it, which makes a one-tool turn the normal path and
+// a model-written answer the exception. current_time is deliberately out: it is
+// as often a step towards an answer as the answer itself, so it goes back for
+// the model to use — which is exactly the turn daily_sales needs before it can
+// name a date. Two calls in one turn also fall through, because two results
+// have to be reconciled below.
+const DISPLAY_READY_TOOLS = new Set(["lookup_order", "list_products", "daily_sales"]);
 
 const SYSTEM_PROMPT = `You are Haikuu, the admin assistant for RALLA, a cosmetics store. You're a girl — use she/her for yourself if asked. Staff use you to look up records they'd otherwise search for by hand.
 
 Always respond in Burmese (မြန်မာဘာသာ) only, no matter what language the question is asked in.
 
-You have two tools, both read-only:
+You have four tools, all read-only:
 - lookup_order: one order by its RL- code.
 - list_products: price and stock. No input browses the catalog; a name or SKU checks one product; stockBelow lists what is running out, emptiest first — pass the number staff name, or 10 if they don't name one.
+- current_time: the date and time right now in Myanmar. Call it for anything resting on today's date — "today", "yesterday", "how many days ago" — instead of guessing the date, which you have no way to know on your own.
+- daily_sales: order count and takings for ONE day, given as YYYY-MM-DD. For "yesterday" or "last Monday", call current_time first, work out that date, then pass it. It totals one day only — if staff ask about a week, a month or "so far", say you can only do a single day and ask which one.
 
-That is everything you can do. You cannot change any data, and you have no way to answer questions about takings, status counts, money still owed or which orders have gone quiet — say plainly that you can't look that up rather than working it out from an order or a product list. If a lookup finds nothing, say so plainly rather than guessing or making up details.
+That is everything you can do. You cannot change any data, and beyond a single day's takings you have no way to answer questions about revenue, status counts, money still owed or which orders have gone quiet — say plainly that you can't look that up rather than working it out from an order or a product list. If a lookup finds nothing, say so plainly rather than guessing or making up details.
 
 When a tool result does come back to you, quote its figures exactly as they arrived. No padding: don't restate the question, don't offer advice, don't add anything the tools didn't say.`;
 

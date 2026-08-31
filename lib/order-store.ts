@@ -315,6 +315,46 @@ export async function revenueByDay(maxDays = 30): Promise<RevenueDay[]> {
 }
 
 /**
+ * What one day sold: how many orders came in and what they came to.
+ *
+ * The day is a **Yangon** calendar day named `YYYY-MM-DD`, opened and closed at
+ * local midnight rather than UTC's. Myanmar is UTC+06:30 with no DST, so
+ * naming the offset makes both edges exact — a UTC window would file an order
+ * placed at 01:00 local under the previous day and miss the evening entirely.
+ *
+ * Cancelled orders are out of *both* figures, unlike the split the dashboard's
+ * removed today-card used. Here the two numbers are read side by side as one
+ * answer to "how much did we sell", and a count that included voided orders
+ * would not be the count that produced the money beside it.
+ *
+ * Returns zeroes for a day with no orders, and for a day in the future — an
+ * empty day is a real answer, not a missing one.
+ *
+ * Throws on a day that doesn't exist. The round-trip through formatDate() is
+ * what catches those: Date rolls 2026-02-31 forward to 2026-03-02 rather than
+ * rejecting it, and totalling March under a February heading is worse than
+ * refusing to answer.
+ */
+export async function salesOnDay(
+  day: string,
+): Promise<{ orders: number; total: number }> {
+  const start = new Date(`${day}T00:00:00+06:30`);
+  if (Number.isNaN(start.getTime()) || formatDate(start) !== day) {
+    throw new RangeError(`Not a YYYY-MM-DD date: ${day}`);
+  }
+
+  const end = new Date(start.getTime() + 86_400_000);
+
+  const result = await prisma.order.aggregate({
+    where: { placedAt: { gte: start, lt: end }, status: { not: "cancelled" } },
+    _count: { _all: true },
+    _sum: { total: true },
+  });
+
+  return { orders: result._count._all, total: result._sum.total ?? 0 };
+}
+
+/**
  * The best sellers, by units rather than by revenue — this answers "what is
  * leaving the shelf", which is the question the products page can't answer.
  *
