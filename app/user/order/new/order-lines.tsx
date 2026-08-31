@@ -7,10 +7,13 @@ import { Delete02Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -21,7 +24,8 @@ import {
   InputGroupText,
 } from "@/components/ui/input-group";
 import { formatKyat } from "@/lib/orders";
-import type { Product } from "@/lib/products";
+import type { Product, ProductGroup } from "@/lib/products";
+import { groupProductsByLetter } from "@/lib/products";
 
 export type Line = {
   /**
@@ -127,6 +131,12 @@ export function OrderLines({
     [products],
   );
 
+  // The same initial-letter bands the products page shows, so the picker reads
+  // as the catalogue staff already browse rather than a second, differently
+  // ordered list. Base UI filters inside the groups and drops the ones left
+  // empty, so typing narrows the bands instead of stranding their headers.
+  const groups = React.useMemo(() => groupProductsByLetter(products), [products]);
+
   // Stable across the server/client boundary, unlike the module counter that
   // produces `line.key`.
   const fieldId = React.useId();
@@ -198,7 +208,7 @@ export function OrderLines({
           return (
             <li key={line.key} className={`${columns} items-center`}>
               <Combobox
-                items={products}
+                items={groups}
                 value={chosen(line)}
                 onValueChange={(p: Product | null) => pickProduct(line.key, p)}
                 // Selected state shows the name alone; the price is already in
@@ -230,35 +240,56 @@ export function OrderLines({
                   <ComboboxEmpty>
                     No product matches. Add it on the Products page first.
                   </ComboboxEmpty>
+                  {/* A function child, not a static map: with grouped `items`
+                      Base UI hands each surviving group here and drops the ones
+                      a query emptied, so no band is left heading nothing. */}
                   <ComboboxList>
-                    {/* Name, with stock pushed to the far edge so the counts
-                      line up down the list instead of drifting with the name
-                      lengths. The price isn't listed — picking the product
-                      fills it into the Unit price field, which is where it can
-                      actually be read and changed.
+                    {(group: ProductGroup) => (
+                      <ComboboxGroup key={group.letter} items={group.items}>
+                        {/* The same tinted band as the products page, bled out
+                            through the list's `p-1` so it spans the popup edge
+                            to edge. Sticky against the list, which is the
+                            scroll container here — `z-10` keeps it over the
+                            rows it outlives, and the popup is already above
+                            the page header, so it can't collide with it the
+                            way the page's own bands could. */}
+                        <ComboboxLabel className="sticky top-0 z-10 -mx-1 bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {group.letter}
+                        </ComboboxLabel>
+                        {/* Name, with stock pushed to the far edge so the counts
+                          line up down the list instead of drifting with the name
+                          lengths. The price isn't listed — picking the product
+                          fills it into the Unit price field, which is where it can
+                          actually be read and changed.
 
-                      A sold-out product can still be picked, so the reason the
-                      order won't save is stated on the line rather than hidden
-                      behind an item that refuses to click. */}
-                    {products.map((p) => (
-                      <ComboboxItem key={p.id} value={p} className="pr-8">
-                        <span className="flex min-w-0 flex-1 items-baseline gap-3">
-                          <span className="truncate">{p.name}</span>
-                          <span className="numeric shrink-0 font-mono text-[11px] text-muted-foreground">
-                            {p.sku}
-                          </span>
-                          <span
-                            className={`ml-auto shrink-0 text-[11px] ${
-                              p.stock === 0
-                                ? "text-cancelled"
-                                : "numeric text-muted-foreground"
-                            }`}
-                          >
-                            {p.stock === 0 ? "Out of stock" : `${p.stock} left`}
-                          </span>
-                        </span>
-                      </ComboboxItem>
-                    ))}
+                          A sold-out product can still be picked, so the reason the
+                          order won't save is stated on the line rather than hidden
+                          behind an item that refuses to click. */}
+                        <ComboboxCollection>
+                          {(p: Product) => (
+                            <ComboboxItem key={p.id} value={p} className="pr-8">
+                              <span className="flex min-w-0 flex-1 items-baseline gap-3">
+                                <span className="truncate">{p.name}</span>
+                                <span className="numeric shrink-0 font-mono text-[11px] text-muted-foreground">
+                                  {p.sku}
+                                </span>
+                                <span
+                                  className={`ml-auto shrink-0 text-[11px] ${
+                                    p.stock === 0
+                                      ? "text-cancelled"
+                                      : "numeric text-muted-foreground"
+                                  }`}
+                                >
+                                  {p.stock === 0
+                                    ? "Out of stock"
+                                    : `${p.stock} left`}
+                                </span>
+                              </span>
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxGroup>
+                    )}
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>
