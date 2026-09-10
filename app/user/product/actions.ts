@@ -35,6 +35,8 @@ export async function toggleProductActiveAction(formData: FormData) {
   revalidatePath("/user/product");
   // Changes what the order form's picker can offer.
   revalidatePath("/user/order/new");
+  // Same for the edit form's picker, on every order.
+  revalidatePath("/user/order/[code]/edit", "page");
 }
 
 /**
@@ -88,6 +90,7 @@ export async function setProductNameAction(
   revalidatePath("/user/product");
   // The order form's picker labels each product by name.
   revalidatePath("/user/order/new");
+  revalidatePath("/user/order/[code]/edit", "page");
   return {};
 }
 
@@ -108,6 +111,11 @@ export async function setProductStockAction(formData: FormData) {
   await setProductStock(productId(formData), stock);
 
   revalidatePath("/user/product");
+  // The counts the order form's picker prints beside each product are these.
+  // Without this, a shelf corrected here still reads as the old number on a
+  // form the browser has already visited.
+  revalidatePath("/user/order/new");
+  revalidatePath("/user/order/[code]/edit", "page");
 }
 
 /**
@@ -128,4 +136,5 @@ export async function setProductPriceAction(formData: FormData) {
   revalidatePath("/user/product");
   // The order form's picker prints each product's price beside its name.
   revalidatePath("/user/order/new");
+  revalidatePath("/user/order/[code]/edit", "page");
 }

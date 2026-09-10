@@ -523,7 +523,11 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
           include: { items: true },
         });
 
-        for (const [productId, quantity] of moves) {
+        // Ascending by id, and updateOrder() walks its products the same way.
+        // Two transactions that take the same product rows in opposite orders
+        // deadlock — Postgres picks one and aborts it — and an order's own line
+        // order is arbitrary, so nothing else would keep two saves agreeing.
+        for (const [productId, quantity] of [...moves].sort((a, b) => a[0] - b[0])) {
           // Raw UPDATE rather than read-then-write: the new value is computed
           // by Postgres from the row it is locking, so two staff saving at the
           // same moment can't both subtract from the same starting number.
@@ -570,6 +574,164 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
   throw new Error(
     `Could not generate a unique order code after ${CODE_ATTEMPTS} attempts.`,
   );
+}
+
+/**
+ * What an edit to an existing order may change.
+ *
+ * Not the status: an order moves through its statuses from the list, which
+ * appends to the history, and letting the edit form set one too would write a
+ * current status the history never records. Not the code or the placed-at date
+ * either — an invoice already in a customer's hands says both.
+ */
+export type OrderEdit = {
+  customerId: number | null;
+  customerName: string;
+  phone: string;
+  city: string;
+  address: string;
+  paymentMethod: PaymentMethod;
+  note: string;
+  lines: NewOrderLine[];
+};
+
+/**
+ * Rewrites an order and reconciles the shelf with what changed.
+ *
+ * The lines are replaced wholesale rather than diffed row by row: a line is a
+ * snapshot with no identity staff can see, so "the second line" after an edit
+ * is simply whatever the form submitted second.
+ *
+ * Stock moves by the *difference*, per product, in the same transaction. This
+ * is the one place units go back on the shelf — an edit that drops a line
+ * typed as 10 instead of 1 must return the nine, or a typo would eat stock
+ * permanently. (Cancelling an order still restores nothing; that is a separate
+ * decision, and cancelled orders are not deleted.)
+ *
+ * Throws OutOfStockError when the edit asks for more units than are there. Only
+ * the increase is guarded, and only against the locked row: the units the order
+ * already holds are its own to keep, so an edit that changes an address can't
+ * be refused because the product has since sold out.
+ */
+export async function updateOrder(
+  id: number,
+  input: OrderEdit,
+): Promise<OrderWithItems> {
+  if (input.lines.length === 0) {
+    throw new Error("An order needs at least one line item.");
+  }
+
+  const total = itemsTotal(input.lines);
+  const wanted = stockMovements(input.lines);
+
+  return prisma.$transaction(async (tx) => {
+    // Locked before it is read, so two staff editing the same order can't both
+    // measure the difference against the same starting lines. Without this the
+    // second save's delta is computed from lines the first has already
+    // replaced, and the shelf ends up disagreeing with the order that is
+    // actually stored. The lock is held to the end of the transaction; the
+    // per-product UPDATEs below guard a different race — two *different*
+    // orders reaching for the same last unit.
+    await tx.$queryRaw`SELECT "id" FROM "orders" WHERE "id" = ${id} FOR UPDATE`;
+
+    const existing = await tx.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!existing) throw new Error("That order no longer exists.");
+
+    // Read inside the transaction, not from what the form was rendered with:
+    // this is what the order actually holds right now, and it is the number the
+    // shelf has to be reconciled against.
+    const held = stockMovements(
+      existing.items.map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        sku: item.sku,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      })),
+    );
+
+    const order = await tx.order.update({
+      where: { id },
+      data: {
+        customerId: input.customerId,
+        customerName: input.customerName,
+        phone: input.phone,
+        city: input.city,
+        address: input.address,
+        total,
+        paymentMethod: input.paymentMethod,
+        note: input.note,
+        items: {
+          deleteMany: {},
+          create: input.lines.map((line) => ({
+            productId: line.productId,
+            name: line.name,
+            sku: line.sku,
+            unitPrice: line.unitPrice,
+            quantity: line.quantity,
+          })),
+        },
+      },
+      include: { items: true },
+    });
+
+    // Ascending by id, matching createOrder() — see the note there on why the
+    // two must agree.
+    const touched = [...new Set([...held.keys(), ...wanted.keys()])].sort(
+      (a, b) => a - b,
+    );
+
+    for (const productId of touched) {
+      const delta = (wanted.get(productId) ?? 0) - (held.get(productId) ?? 0);
+      if (delta === 0) continue;
+
+      if (delta < 0) {
+        // Putting units back can't fail — nothing else is competing for room on
+        // the shelf, and the check constraint only guards against going below
+        // zero. Same raw UPDATE as below so the arithmetic is Postgres's.
+        await tx.$executeRaw`
+          UPDATE "products"
+          SET "stock" = "stock" + ${-delta},
+              "updated_at" = now()
+          WHERE "id" = ${productId}
+        `;
+        continue;
+      }
+
+      // Same reasoning as createOrder(): the new value is computed by Postgres
+      // from the row it is locking, and `stock >= delta` is what actually
+      // forbids overselling.
+      const updated = await tx.$executeRaw`
+        UPDATE "products"
+        SET "stock" = "stock" - ${delta},
+            "updated_at" = now()
+        WHERE "id" = ${productId} AND "stock" >= ${delta}
+      `;
+
+      if (updated === 0) {
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+          select: { name: true, stock: true },
+        });
+        if (!product) {
+          throw new Error("A product on this order no longer exists.");
+        }
+        // Reported as what this order may spend, not the bare shelf count: the
+        // units it already holds are part of what it is allowed to keep, and a
+        // message that left them out would not add up on screen.
+        throw new OutOfStockError(
+          product.name,
+          product.stock + (held.get(productId) ?? 0),
+          wanted.get(productId) ?? 0,
+        );
+      }
+    }
+
+    return order;
+  });
 }
 
 /**

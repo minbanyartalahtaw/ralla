@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { BackButton } from "@/components/back-button";
 import { listActiveProducts } from "@/lib/product-store";
 
-import { OrderForm } from "./order-form";
+import { OrderForm } from "../order-form";
+import { createOrderAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "New order — RALLA",
@@ -23,7 +24,7 @@ export default async function NewOrderPage() {
         </h1>
       </div>
       <div className="mt-6">
-        <OrderForm products={products} />
+        <OrderForm products={products} action={createOrderAction} />
       </div>
     </div>
   );

@@ -4,70 +4,22 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { searchCustomers } from "@/lib/customer-store";
-import type { Customer } from "@/lib/customers";
 import { createOrder, OutOfStockError } from "@/lib/order-store";
 import { getProduct } from "@/lib/product-store";
-import {
-  CITIES,
-  PAYMENT_METHOD,
-  type OrderWithItems,
-  type PaymentMethod,
-} from "@/lib/orders";
-import { parseOrderLines } from "./parse-lines";
-import type { CreateOrderState } from "./state";
+import type { OrderWithItems } from "@/lib/orders";
 
-/**
- * Type-ahead lookup for the customer autofill on this form.
- *
- * The session check is load-bearing here rather than defensive: this returns
- * phone numbers and addresses, and a Server Action is callable by direct POST,
- * so without it this is an open customer-data endpoint no matter what the
- * proxy does to `/user/*`.
- */
-export async function searchCustomersAction(
-  query: string,
-): Promise<Customer[]> {
-  await requireSession();
-  return searchCustomers(query);
-}
-
-function parseId(raw: FormDataEntryValue | null) {
-  const n = Number.parseInt(String(raw ?? ""), 10);
-  return Number.isSafeInteger(n) && n > 0 ? n : null;
-}
+import type { OrderFormState } from "../order-form-state";
+import { parseOrderFields } from "../parse-fields";
+import { parseOrderLines } from "../parse-lines";
 
 export async function createOrderAction(
-  _prevState: CreateOrderState,
+  _prevState: OrderFormState,
   formData: FormData,
-): Promise<CreateOrderState> {
+): Promise<OrderFormState> {
   await requireSession();
 
-  // Present when the form was filled from a saved customer. The detail fields
-  // are still read from the form, so an edit made before saving is respected.
-  const customerId = parseId(formData.get("customerId"));
-  const customer = String(formData.get("customer") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const city = String(formData.get("city") ?? "").trim();
-  const address = String(formData.get("address") ?? "").trim();
-  const payment = String(formData.get("payment") ?? "");
+  const { fields, errors } = parseOrderFields(formData);
   const notifyBySms = formData.get("notifyBySms") === "on";
-  const note = String(formData.get("note") ?? "").trim();
-
-  const errors: Record<string, string> = {};
-
-  if (!customer) errors.customer = "Customer name is required.";
-
-  if (!phone) errors.phone = "Phone number is required.";
-  else if (!/^[\d+\s-]{6,20}$/.test(phone))
-    errors.phone = "Use digits, spaces or dashes only.";
-
-  if (!city) errors.city = "Pick a city.";
-  else if (!CITIES.includes(city as (typeof CITIES)[number]))
-    errors.city = "Not a city we deliver to.";
-
-  if (!Object.hasOwn(PAYMENT_METHOD, payment))
-    errors.payment = "Pick a payment method.";
 
   const parsed = await parseOrderLines(formData, getProduct);
   if (parsed.error) errors.lines = parsed.error;
@@ -79,14 +31,8 @@ export async function createOrderAction(
   let order: OrderWithItems;
   try {
     order = await createOrder({
-      customerId,
-      customerName: customer,
-      phone,
-      city,
-      address,
-      paymentMethod: payment as PaymentMethod,
+      ...fields,
       notifyBySms,
-      note,
       lines: parsed.lines!,
     });
   } catch (error) {
@@ -108,6 +54,8 @@ export async function createOrderAction(
   // form's picker are now showing stale counts.
   revalidatePath("/user/product");
   revalidatePath("/user/order/new");
+  // Same for the edit form's picker, on every order.
+  revalidatePath("/user/order/[code]/edit", "page");
 
   redirect(`/user/order?created=${order.code}`);
 }

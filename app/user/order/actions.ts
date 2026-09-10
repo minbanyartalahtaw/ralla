@@ -3,8 +3,26 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth";
+import { searchCustomers } from "@/lib/customer-store";
+import type { Customer } from "@/lib/customers";
 import { updateOrderNote, updateOrderStatus } from "@/lib/order-store";
 import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
+
+/**
+ * Type-ahead lookup for the customer autofill on the order form, used by both
+ * the new and edit routes.
+ *
+ * The session check is load-bearing here rather than defensive: this returns
+ * phone numbers and addresses, and a Server Action is callable by direct POST,
+ * so without it this is an open customer-data endpoint no matter what the
+ * proxy does to `/user/*`.
+ */
+export async function searchCustomersAction(
+  query: string,
+): Promise<Customer[]> {
+  await requireSession();
+  return searchCustomers(query);
+}
 
 /**
  * Changes an order's delivery status from the list.
@@ -47,4 +65,8 @@ export async function updateOrderNoteAction(formData: FormData) {
   await updateOrderNote(id, note);
 
   revalidatePath(`/user/order/${code}`);
+  // The edit form carries this same field. Without this it would still hold
+  // the note as it was when that page was last rendered, and saving an
+  // unrelated change there would quietly put the old text back.
+  revalidatePath("/user/order/[code]/edit", "page");
 }

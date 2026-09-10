@@ -18,6 +18,25 @@ export async function listActiveProducts(): Promise<Product[]> {
   });
 }
 
+/**
+ * The picker's list for editing an existing order: every active product, plus
+ * any the order already has a line for.
+ *
+ * A product that was deactivated after the order was placed still has to appear
+ * — otherwise its line would render as an empty search box and staff would be
+ * told to re-pick something the catalog no longer offers, on an order they only
+ * opened to correct an address.
+ */
+export async function listProductsForOrder(
+  productIds: number[],
+): Promise<Product[]> {
+  const ids = [...new Set(productIds)];
+  return prisma.product.findMany({
+    where: { OR: [{ isActive: true }, { id: { in: ids } }] },
+    orderBy: { name: "asc" },
+  });
+}
+
 /** Trimmed only — a product name is free text, so inner spaces are real. */
 export function normalizeProductQuery(query: string | undefined): string {
   return (query ?? "").trim();

@@ -92,15 +92,55 @@ function orderedByProduct(lines: Line[]): Map<number, number> {
 }
 
 /**
+ * Units this order already has off the shelf, per product. Empty for a new
+ * order; on an edit it is what the order held when the page loaded.
+ *
+ * An edit only moves the difference, so those units are still available to it:
+ * a line keeping the last three units is not short of stock, and counting
+ * against `stock` alone would grey out Save on a form that changes nothing.
+ */
+export type HeldStock = Map<number, number>;
+
+/** What a product's shelf count leaves this order to spend in total. */
+function availableFor(product: Product, held: HeldStock): number {
+  return product.stock + (held.get(product.id) ?? 0);
+}
+
+/**
+ * What is left of that once the lines already on the form are counted.
+ *
+ * The picker's job is "how many can I still add", and the shelf count alone
+ * can't answer it — with three lines of the same product open, the same number
+ * sat next to all three while none of them had been spent yet. Floors at zero:
+ * an order that has gone past the shelf says so on the line itself, in red,
+ * and a negative count in the list would be a second, worse telling of it.
+ */
+function remainingFor(
+  product: Product,
+  held: HeldStock,
+  ordered: Map<number, number>,
+): number {
+  return Math.max(0, availableFor(product, held) - (ordered.get(product.id) ?? 0));
+}
+
+/**
  * Products the order asks for more of than the shelf holds. An order that would
  * oversell can't be saved, so the form asks this to decide whether the save
  * button is live — the action and the write transaction check it again.
  */
-export function stockShortfalls(lines: Line[], products: Product[]) {
+export function stockShortfalls(
+  lines: Line[],
+  products: Product[],
+  held: HeldStock = new Map(),
+) {
   const totals = orderedByProduct(lines);
   return products
-    .filter((p) => (totals.get(p.id) ?? 0) > p.stock)
-    .map((p) => ({ name: p.name, stock: p.stock, ordered: totals.get(p.id)! }));
+    .filter((p) => (totals.get(p.id) ?? 0) > availableFor(p, held))
+    .map((p) => ({
+      name: p.name,
+      stock: availableFor(p, held),
+      ordered: totals.get(p.id)!,
+    }));
 }
 
 /**
@@ -119,12 +159,15 @@ export function OrderLines({
   onChange,
   onAdd,
   error,
+  held = new Map(),
 }: {
   products: Product[];
   lines: Line[];
   onChange: (lines: Line[]) => void;
   onAdd: () => void;
   error?: string;
+  /** See HeldStock — empty for a new order. */
+  held?: HeldStock;
 }) {
   const byId = React.useMemo(
     () => new Map(products.map((p) => [p.id, p])),
@@ -169,9 +212,8 @@ export function OrderLines({
     const product = chosen(line);
     if (!product) return null;
     const wanted = ordered.get(product.id) ?? 0;
-    return wanted > product.stock
-      ? { stock: product.stock, ordered: wanted }
-      : null;
+    const available = availableFor(product, held);
+    return wanted > available ? { stock: available, ordered: wanted } : null;
   }
 
   // One row per line at every width — stacking the four fields into a card on
@@ -266,7 +308,17 @@ export function OrderLines({
                           order won't save is stated on the line rather than hidden
                           behind an item that refuses to click. */}
                         <ComboboxCollection>
-                          {(p: Product) => (
+                          {(p: Product) => {
+                            // What this order can still spend: the shelf, plus
+                            // the units an edit already holds, minus whatever
+                            // the lines above have claimed.
+                            const left = remainingFor(p, held, ordered);
+                            // Nothing on the shelf at all reads differently
+                            // from a product this order has simply used up —
+                            // one is a trip to the supplier, the other is a
+                            // quantity on screen you can lower.
+                            const bare = availableFor(p, held) === 0;
+                            return (
                             <ComboboxItem key={p.id} value={p} className="pr-8">
                               <span className="flex min-w-0 flex-1 items-baseline gap-3">
                                 <span className="truncate">{p.name}</span>
@@ -275,18 +327,21 @@ export function OrderLines({
                                 </span>
                                 <span
                                   className={`ml-auto shrink-0 text-[11px] ${
-                                    p.stock === 0
+                                    left === 0
                                       ? "text-cancelled"
                                       : "numeric text-muted-foreground"
                                   }`}
                                 >
-                                  {p.stock === 0
+                                  {bare
                                     ? "Out of stock"
-                                    : `${p.stock} left`}
+                                    : left === 0
+                                      ? "None left"
+                                      : `${left} left`}
                                 </span>
                               </span>
                             </ComboboxItem>
-                          )}
+                            );
+                          }}
                         </ComboboxCollection>
                       </ComboboxGroup>
                     )}

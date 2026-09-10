@@ -1,9 +1,10 @@
 /**
  * Turns the form's parallel line arrays into order lines.
  *
- * Kept out of actions.ts so it can be tested directly: a `"use server"` module
- * may only export async functions, and calling the action itself needs Next's
- * request context for revalidatePath().
+ * Shared by the new and edit routes, and kept out of their action modules so it
+ * can be tested directly: a `"use server"` module may only export async
+ * functions, and calling the action itself needs Next's request context for
+ * revalidatePath().
  */
 
 import type { NewOrderLine } from "@/lib/order-store";
@@ -36,10 +37,16 @@ function parseId(raw: FormDataEntryValue | null | undefined) {
  *
  * `unitPrice` IS taken from the form — staff can discount a line — but it must
  * be a whole number above zero.
+ *
+ * `held` is the units this order already has off the shelf, per product, and is
+ * empty for a new order. An edit only moves the difference, so a line that
+ * already holds the last three units is not short of stock by keeping them —
+ * `stock` alone would say it was, and refuse a save that changes nothing.
  */
 export async function parseOrderLines(
   formData: FormData,
   getProductById: (id: number) => Promise<Product | null>,
+  held: Map<number, number> = new Map(),
 ): Promise<ParseLinesResult> {
   const productIds = formData.getAll("lineProductId");
   const prices = formData.getAll("lineUnitPrice");
@@ -93,12 +100,13 @@ export async function parseOrderLines(
   // Against the total per product, not each line: the same product can sit on
   // two rows, and each on its own can fit while the sum doesn't.
   for (const { product, quantity } of ordered.values()) {
-    if (quantity > product.stock) {
+    const available = product.stock + (held.get(product.id) ?? 0);
+    if (quantity > available) {
       return {
         error:
-          product.stock === 0
+          available === 0
             ? `${product.name} is out of stock.`
-            : `Only ${product.stock} of ${product.name} in stock, ordering ${quantity}.`,
+            : `Only ${available} of ${product.name} in stock, ordering ${quantity}.`,
       };
     }
   }

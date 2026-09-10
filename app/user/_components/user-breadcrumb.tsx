@@ -45,6 +45,16 @@ const DETAIL_PARENTS = [
   { prefix: "/user/order/", label: "Orders" },
 ] as const;
 
+/**
+ * Pages that hang off a record rather than being one — `/user/order/RL-…/edit`.
+ * Named here so the trail stays three deep instead of falling through to the
+ * "Dashboard" fallback, which would put a crumb on screen for a page nobody is
+ * on. Add a row when you add a sub-route.
+ */
+const DETAIL_ACTIONS: Record<string, string> = {
+  edit: "Edit",
+};
+
 const FALLBACK = ["Dashboard"] as const;
 
 function trailFor(pathname: string): readonly string[] {
@@ -53,10 +63,15 @@ function trailFor(pathname: string): readonly string[] {
 
   for (const parent of DETAIL_PARENTS) {
     if (!pathname.startsWith(parent.prefix)) continue;
-    const code = pathname.slice(parent.prefix.length);
-    // Only a single segment is a record; anything deeper isn't ours to name.
-    if (code === "" || code.includes("/")) continue;
-    return [
+    const [code, action, ...rest] = pathname
+      .slice(parent.prefix.length)
+      .split("/");
+    // The record itself, optionally one named page under it. Anything deeper
+    // isn't ours to name.
+    if (!code || rest.length > 0) continue;
+    if (action !== undefined && !DETAIL_ACTIONS[action]) continue;
+
+    const trail = [
       parent.label,
       // Uppercased because codes are stored uppercase and the page prints them
       // that way. URLs come back lowercased often enough that the raw segment
@@ -64,6 +79,7 @@ function trailFor(pathname: string): readonly string[] {
       // `RL-260809JBI` — the same record spelled two ways on one screen.
       decodeURIComponent(code).toUpperCase(),
     ];
+    return action === undefined ? trail : [...trail, DETAIL_ACTIONS[action]];
   }
 
   return FALLBACK;

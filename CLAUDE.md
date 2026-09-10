@@ -189,8 +189,33 @@ readable message, and the `stock >= n` condition on the UPDATE decides it agains
 locked row. Zero rows updated means someone else got there first, so the transaction
 throws `OutOfStockError` and rolls the order back; the action turns that into a form
 error rather than a crash. Stock is checked against the **total per product**, since
-the same product can sit on two lines. Nothing puts stock *back* yet — cancelling an
-order does not restore it.
+the same product can sit on two lines.
+
+**An order is edited at `/user/order/[code]/edit`**, on the same `OrderForm` the create
+route uses — one component, so there is no second layout for staff to learn. The route
+supplies the action, the labels and the order's current values. What it may change is
+the snapshot, the lines and the payment method; **not** the status (that moves from the
+list, which records *when* it moved, and a form setting one would write a current status
+the history never saw), not the code or the date, and not which customer the order is
+for — `updateOrder()` takes `customerId` from the stored order, never the form. The name
+stays editable because it is this order's own snapshot.
+
+`updateOrder()` is the one place stock goes *back* on the shelf: it moves the
+**difference** per product, so dropping a line typed as 10 instead of 1 returns the nine.
+Cancelling an order still restores nothing. The units an edit already holds count as
+available to it — otherwise a save that only fixed an address could be refused because
+the product had since sold out — so `parseOrderLines()`, `stockShortfalls()` and the
+picker's "N left" all take a `held` map. The picker subtracts what the form's own lines
+have already claimed, which is why it reads "None left" (used up here) distinctly from
+"Out of stock" (none on the shelf at all).
+
+Two locks keep concurrent edits honest, and they guard different races. The order row is
+taken `FOR UPDATE` at the top of the transaction, so two staff saving the same order
+can't both measure their difference against the same starting lines. The per-product
+`stock >= n` UPDATE then guards two *different* orders reaching for the same last unit.
+Both `createOrder()` and `updateOrder()` walk their products **ascending by id** — an
+order's line order is arbitrary, and two transactions taking the same rows in opposite
+orders deadlock.
 
 Storage is Postgres via Prisma. `lib/*-store.ts` are the only modules that touch it;
 everything else goes through them. Run `npm run db:up` then `npm run db:migrate`.

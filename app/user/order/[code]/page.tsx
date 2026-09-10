@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { cache } from "react";
 import type { Metadata } from "next";
 import { getOrderByCode } from "@/lib/order-store";
@@ -15,6 +17,8 @@ import {
 } from "@/lib/orders";
 
 import { BackButton } from "@/components/back-button";
+import { Button } from "@/components/ui/button";
+import { CreatedToast } from "@/components/created-toast";
 import { DownloadInvoice } from "./download-invoice";
 import { OrderNote } from "./order-note";
 
@@ -83,10 +87,15 @@ function MetaRow({
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: PageProps<"/user/order/[code]">) {
   const { code } = await params;
   const order = await loadOrder(code);
   if (!order) notFound();
+
+  // Set by the edit form's redirect, which lands back here rather than on a
+  // list — so the toast is the only thing that says the save went through.
+  const { updated } = await searchParams;
 
   // Only to link back to the customer's page. Everything printed on the sheet
   // is the order's own snapshot — a walk-in has no record to link to at all.
@@ -95,11 +104,32 @@ export default async function OrderDetailPage({
 
   return (
     <div className="mx-auto max-w-[640px]">
+      {/* No `detailHref` — this *is* the detail page. The order code is the
+          dedupe key, so returning here after a second edit toasts again. */}
+      <CreatedToast
+        code={updated ? order.code : undefined}
+        message={`Order ${order.code} updated.`}
+      />
+
       {/* App chrome. Sits outside the sheet and out of the print stylesheet, so
           neither a crop nor a PDF picks it up. */}
       <div className="flex items-center justify-between gap-3">
         <BackButton fallback="/user/order" />
-        <DownloadInvoice code={order.code} />
+        <div className="flex items-center gap-2">
+          {/* Straight to the same numbered form the order was placed on, so
+              correcting one is the page staff already know rather than a
+              second layout to learn. Delivery status isn't on it — that moves
+              from the orders list, which records when it moved. */}
+          <Button
+            variant="secondary"
+            nativeButton={false}
+            render={<Link href={`/user/order/${order.code}/edit`} />}
+          >
+            <HugeiconsIcon icon={PencilEdit02Icon} data-icon="inline-start" />
+            Edit
+          </Button>
+          <DownloadInvoice code={order.code} />
+        </div>
       </div>
 
       {/* `@container` rather than the viewport breakpoints this sheet used to

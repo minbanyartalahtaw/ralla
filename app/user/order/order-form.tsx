@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Alert02Icon } from "@hugeicons/core-free-icons";
@@ -23,15 +22,35 @@ import { CITIES, PAYMENT_METHOD, PAYMENT_METHOD_KEYS } from "@/lib/orders";
 import type { Customer } from "@/lib/customers";
 import type { Product } from "@/lib/product-store";
 
-import { createOrderAction } from "./actions";
 import { CustomerSearch } from "./customer-search";
 import {
   OrderLines,
   blankLine,
   stockShortfalls,
+  type HeldStock,
   type Line,
 } from "./order-lines";
-import { emptyCreateOrderState } from "./state";
+import {
+  emptyOrderFormState,
+  type OrderFormAction,
+} from "./order-form-state";
+
+/**
+ * What an existing order fills the form with. Absent on /user/order/new.
+ *
+ * These are the order's own snapshot, not the linked customer's record — the
+ * point of editing an order is to correct where *this* parcel goes.
+ */
+export type OrderFormInitial = {
+  customerId: number | null;
+  customer: string;
+  phone: string;
+  city: string;
+  address: string;
+  payment: string;
+  note: string;
+  lines: { productId: number | null; unitPrice: string; quantity: string }[];
+};
 
 /**
  * Field-level errors are text alone. The warning icon belongs to the one
@@ -78,19 +97,67 @@ function Label({
   );
 }
 
-export function OrderForm({ products }: { products: Product[] }) {
+/**
+ * The order form, shared by /user/order/new and /user/order/[code]/edit.
+ *
+ * One component rather than two on purpose: an edit that looked different from
+ * the form staff already know would be a second layout to learn for the same
+ * six fields. The route supplies the action, the labels and — when editing —
+ * what the order already says.
+ */
+export function OrderForm({
+  products,
+  action,
+  initial,
+  held,
+  hidden,
+  allowCustomerSearch = true,
+  showStockNote = false,
+  submitLabel = "Save order",
+}: {
+  products: Product[];
+  action: OrderFormAction;
+  /** Absent when creating. */
+  initial?: OrderFormInitial;
+  /** Units the edited order already holds; see HeldStock. */
+  held?: HeldStock;
+  /** Extra values the route's action needs — the edit route sends the order id. */
+  hidden?: Record<string, string>;
+  /**
+   * Off when editing: which customer an order was placed for is settled, and
+   * re-pointing it at another one would move a parcel's history onto someone
+   * who never bought it. The name below stays editable — that is this order's
+   * own snapshot, so correcting a spelling here doesn't touch their record.
+   */
+  allowCustomerSearch?: boolean;
+  /**
+   * On when editing. Placing an order obviously takes its units off the shelf;
+   * that an *edit* moves the difference back and forth is the part staff would
+   * otherwise second-guess, and go and "fix" a count that is already right.
+   */
+  showStockNote?: boolean;
+  submitLabel?: string;
+}) {
   const [state, formAction, pending] = useActionState(
-    createOrderAction,
-    emptyCreateOrderState,
+    action,
+    emptyOrderFormState,
   );
 
   // The Combobox holds its value in React state, so a hidden input carries it
   // into the FormData the Server Action receives.
-  const [city, setCity] = React.useState<string | null>(null);
+  const [city, setCity] = React.useState<string | null>(
+    initial?.city || null,
+  );
   // The key sequence lives here so it survives Fast Refresh and starts from
   // the same place on the server and the client.
-  const [lines, setLines] = React.useState<Line[]>(() => [blankLine(0)]);
-  const nextLineSeq = React.useRef(1);
+  const [lines, setLines] = React.useState<Line[]>(() =>
+    initial && initial.lines.length > 0
+      ? initial.lines.map((line, i) => ({ ...blankLine(i), ...line }))
+      : [blankLine(0)],
+  );
+  const nextLineSeq = React.useRef(
+    initial && initial.lines.length > 0 ? initial.lines.length : 1,
+  );
 
   function addLine() {
     setLines((current) => [...current, blankLine(nextLineSeq.current++)]);
@@ -100,12 +167,19 @@ export function OrderForm({ products }: { products: Product[] }) {
   // what gets saved is whatever is in the fields, not the customer record, so
   // a one-off address change on this order doesn't rewrite the customer.
   const [linked, setLinked] = React.useState<Customer | null>(null);
-  const [customer, setCustomer] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [address, setAddress] = React.useState("");
+  const [customer, setCustomer] = React.useState(initial?.customer ?? "");
+  const [phone, setPhone] = React.useState(initial?.phone ?? "");
+  const [address, setAddress] = React.useState(initial?.address ?? "");
+  // Held separately from `linked`, which is only ever set by the search box:
+  // an edited order remembers which customer it was placed for without this
+  // form having to load that record just to keep the link alive.
+  const [customerId, setCustomerId] = React.useState<number | null>(
+    initial?.customerId ?? null,
+  );
 
   function fillFromCustomer(c: Customer) {
     setLinked(c);
+    setCustomerId(c.id);
     setCustomer(c.name);
     setPhone(c.phone);
     setCity(c.city);
@@ -114,6 +188,7 @@ export function OrderForm({ products }: { products: Product[] }) {
 
   function clearLink() {
     setLinked(null);
+    setCustomerId(null);
     setCustomer("");
     setPhone("");
     setCity(null);
@@ -123,10 +198,14 @@ export function OrderForm({ products }: { products: Product[] }) {
   const { errors } = state;
   // Stock as it was when the page loaded. The action re-checks against the live
   // counts, so this only saves a round trip — it isn't the guarantee.
-  const shortfalls = stockShortfalls(lines, products);
+  const shortfalls = stockShortfalls(lines, products, held);
 
   return (
     <form action={formAction} className="space-y-5">
+      {Object.entries(hidden ?? {}).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+
       {/* The one place the form raises its voice: a hairline rule and the
            warning icon, no filled panel. The fields say what to fix. */}
       {state.message ? (
@@ -149,8 +228,9 @@ export function OrderForm({ products }: { products: Product[] }) {
         <legend className="sr-only">Customer</legend>
         <SectionHeader step={1} title="Customer" />
         <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-          <input type="hidden" name="customerId" value={linked?.id ?? ""} />
+          <input type="hidden" name="customerId" value={customerId ?? ""} />
 
+          {allowCustomerSearch ? (
           <div className="sm:col-span-2">
             {/* Labelled like every other field — it was the only input on the
                 form floating with nothing but a placeholder. */}
@@ -175,6 +255,7 @@ export function OrderForm({ products }: { products: Product[] }) {
               </div>
             ) : null}
           </div>
+          ) : null}
 
           <div>
             <Label htmlFor="customer">Name</Label>
@@ -281,13 +362,28 @@ export function OrderForm({ products }: { products: Product[] }) {
               onChange={setLines}
               onAdd={addLine}
               error={errors.lines}
+              held={held}
             />
+            {showStockNote ? (
+              // Under the total, where the lines stop being edited — it answers
+              // "and what happens to stock now?", which is the question the
+              // last quantity typed above leaves behind.
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                Saving adjusts stock by what changed on this order — no need to
+                edit it on the Products page.
+              </p>
+            ) : null}
           </div>
 
           <div className="sm:col-span-2">
             <span className="mb-2 block text-xs font-medium text-foreground">Payment</span>
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              {PAYMENT_METHOD_KEYS.filter((p) => p !== "refunded").map((p) => (
+              {/* "Refunded" isn't something an order is placed as — it only
+                  shows here when the order already carries it, so an edit to
+                  the address can't silently reset what was refunded. */}
+              {PAYMENT_METHOD_KEYS.filter(
+                (p) => p !== "refunded" || initial?.payment === "refunded",
+              ).map((p) => (
                 <label
                   key={p}
                   className="flex cursor-pointer items-center gap-2.5 rounded-xl border bg-card px-3.5 py-2.5 text-sm font-medium has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 has-[input:checked]:text-foreground text-muted-foreground transition-colors has-[input:checked]:ring-1 has-[input:checked]:ring-primary/20"
@@ -296,7 +392,7 @@ export function OrderForm({ products }: { products: Product[] }) {
                     type="radio"
                     name="payment"
                     value={p}
-                    defaultChecked={p === "cod"}
+                    defaultChecked={p === (initial?.payment ?? "cod")}
                     className="size-3.5 accent-[var(--primary)]"
                   />
                   {PAYMENT_METHOD[p]}
@@ -310,13 +406,19 @@ export function OrderForm({ products }: { products: Product[] }) {
             <Label htmlFor="note" optional>
               Note
             </Label>
-            <Textarea id="note" name="note" placeholder="" />
+            <Textarea
+              id="note"
+              name="note"
+              placeholder=""
+              defaultValue={initial?.note ?? ""}
+            />
           </div>
         </div>
       </fieldset>
 
-      {/* Reversed on a phone so Save sits above Cancel and under the thumb;
-           from `sm` it goes back to the usual right-aligned pair. */}
+      {/* Full width and under the thumb on a phone; right-aligned from `sm`.
+           The way out is the back button in the page header — a Cancel beside
+           Save only invited the mis-tap. */}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         {/* Says why the button is dead — the offending line is marked too, but
             that can be scrolled off screen by the time you reach the button. */}
@@ -326,19 +428,11 @@ export function OrderForm({ products }: { products: Product[] }) {
           </p>
         ) : null}
         <Button
-          variant="outline"
-          nativeButton={false}
-          className="h-10 w-full sm:h-9 sm:w-auto"
-          render={<Link href="/user/order" />}
-        >
-          Cancel
-        </Button>
-        <Button
           type="submit"
           className="h-10 w-full sm:h-9 sm:w-auto shadow-sm"
           disabled={pending || shortfalls.length > 0}
         >
-          {pending ? "Saving…" : "Save order"}
+          {pending ? "Saving…" : submitLabel}
         </Button>
       </div>
     </form>
