@@ -5,6 +5,13 @@ import { TruckDeliveryIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   listOrders,
   ordersByCity,
   revenueByDay,
@@ -31,22 +38,22 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border bg-card">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b px-5 py-3">
-        <h2 className="text-[13px] font-semibold">{title}</h2>
-        {/* The caveats live in the header, not under the plot — they qualify
-            what is being counted, and a reader needs them before the number. */}
-        <div className="text-[11px] text-muted-foreground">{note}</div>
-      </div>
-      <div className="p-4">{children}</div>
-    </section>
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>{title}</CardTitle>
+        <CardAction className="text-[11px] text-muted-foreground">
+          {note}
+        </CardAction>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
 /** Holds the panel's height so an empty dashboard doesn't collapse. */
 function Empty({ label }: { label: string }) {
   return (
-    <div className="flex h-[180px] items-center justify-center text-center">
+    <div className="flex h-[220px] items-center justify-center text-center">
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
@@ -84,10 +91,11 @@ export default async function DashboardPage({
   const sold = orders.some((o) => o.status !== "cancelled");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      <h1 className="sr-only">Dashboard</h1>
       {/* Two per row only from `lg`: below that a month of ticks squeezed into
           half a phone is unreadable. */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Panel
           title="ရောင်းရငွေ"
           note={
@@ -141,56 +149,64 @@ export default async function DashboardPage({
         </Panel>
       </div>
 
-      <section className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-3">
-          <h2 className="text-[13px] font-semibold">By delivery status</h2>
-        </div>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>By delivery status</CardTitle>
+          <CardAction className="text-[11px] tabular-nums text-muted-foreground">
+            {orders.length > 0 ? `${orders.length} total` : null}
+          </CardAction>
+        </CardHeader>
         {orders.length === 0 ? (
-          <div className="flex flex-col items-center px-6 py-12 text-center">
-            <span className="text-muted-foreground">
-              <HugeiconsIcon
-                icon={TruckDeliveryIcon}
-                size={32}
-                strokeWidth={1.5}
-              />
-            </span>
-            <p className="mt-3 text-xs font-medium">No orders yet</p>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              className="mt-4"
-              render={<Link href="/user/order/new" />}
-            >
-              Add the first order
-            </Button>
-          </div>
+          <CardContent>
+            <div className="flex flex-col items-center px-6 py-12 text-center">
+              <span className="flex size-11 items-center justify-center rounded-full bg-accent text-muted-foreground">
+                <HugeiconsIcon
+                  icon={TruckDeliveryIcon}
+                  size={20}
+                  strokeWidth={1.5}
+                />
+              </span>
+              <p className="mt-3 text-xs font-medium">No orders yet</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Orders you save will appear here.
+              </p>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                className="mt-4"
+                render={<Link href="/user/order/new" />}
+              >
+                Add the first order
+              </Button>
+            </div>
+          </CardContent>
         ) : (
-          <ul>
+          <ul className="divide-y">
             {(Object.keys(DELIVERY_STATUS) as DeliveryStatus[]).map((s) => {
               const count = byStatus[s] ?? 0;
               const share = Math.round((count / orders.length) * 100);
               return (
                 <li
                   key={s}
-                  className="flex items-center gap-3 px-5 py-2.5 not-last:border-b"
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/50"
                 >
                   <span
-                    className={`size-1.5 shrink-0 rounded-full ${DELIVERY_STATUS[s].dot}`}
+                    className={`size-2 shrink-0 rounded-full ${DELIVERY_STATUS[s].dot}`}
                     aria-hidden
                   />
-                  <span className="w-24 text-xs font-medium">
+                  <span className="w-24 shrink-0 text-xs font-medium">
                     {DELIVERY_STATUS[s].label}
                   </span>
-                  <span className="numeric w-8 text-right text-xs">
+                  <span className="w-10 shrink-0 text-right text-xs tabular-nums">
                     {count}
                   </span>
-                  <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                     <div
                       className={`h-full rounded-full ${DELIVERY_STATUS[s].dot}`}
                       style={{ width: `${share}%` }}
                     />
                   </div>
-                  <span className="numeric w-9 text-right text-[11px] text-muted-foreground">
+                  <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
                     {share}%
                   </span>
                 </li>
@@ -198,7 +214,7 @@ export default async function DashboardPage({
             })}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }
