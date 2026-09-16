@@ -17,8 +17,8 @@ export default async function NewOrderPage() {
 
   return (
     <div className="mx-auto max-w-[640px]">
-      <BackButton fallback="/user/order" />
-      <div className="mt-4">
+      <div className="flex items-center gap-3">
+        <BackButton fallback="/user/order" />
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           New order
         </h1>
