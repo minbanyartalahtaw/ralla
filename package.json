@@ -13,6 +13,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:backup": "./scripts/backup-db.sh",
     "postinstall": "prisma generate"
   },
   "dependencies": {

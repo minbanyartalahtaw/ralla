@@ -24,22 +24,34 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const target = safeNextPath(typeof next === "string" ? next : undefined);
 
   return (
-    <main className="flex flex-1 items-center justify-center px-5 py-12">
-      <div className="w-full max-w-xs">
-        {/* The wordmark *is* the heading — it spells RALLA — so it carries the
-            h1 and the alt text says the same thing for a screen reader. */}
+    <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-ralla-900 px-4 py-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(36rem_22rem_at_15%_10%,var(--ralla-600)_0%,transparent_60%),radial-gradient(30rem_20rem_at_85%_15%,var(--ralla-300)_0%,transparent_55%),radial-gradient(40rem_26rem_at_50%_110%,var(--ralla-700)_0%,transparent_60%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.35] bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] bg-[size:22px_22px] [mask-image:radial-gradient(42rem_30rem_at_50%_45%,black_30%,transparent_75%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -left-24 size-72 rounded-full bg-ralla-300/30 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 -bottom-24 size-80 rounded-full bg-ralla-50/20 blur-3xl"
+      />
+      <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-card p-8 shadow-2xl shadow-black/30">
         <h1>
           <Image
             src={logoText}
             alt="RALLA"
-            // Next 16 deprecated `priority` in favour of `preload`. This is the
-            // page's LCP element, and there's nothing else competing for it.
             preload
-            sizes="176px"
-            className="mx-auto h-auto w-44"
+            sizes="140px"
+            className="mx-auto h-auto w-32"
           />
         </h1>
-        <div className="mt-6 rounded-lg border bg-card p-6">
+        <div className="mt-8">
           <LoginForm next={target} />
         </div>
       </div>

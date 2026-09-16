@@ -30,77 +30,87 @@ export function LoginForm({ next }: { next: string }) {
   const [reveal, setReveal] = React.useState(false);
 
   return (
-    <form action={formAction} className="space-y-4">
-      {/* Sanitized on the server before it reaches here, and again in the
-          action — this input is reachable by a direct POST. */}
+    <form action={formAction} className="space-y-5">
       <input type="hidden" name="next" value={next} />
 
       {state.error ? (
         <div
           id="login-error"
           role="alert"
-          className="flex items-start gap-2.5 rounded-md border-l-2 border-destructive bg-destructive/10 px-4 py-2.5 text-destructive"
+          className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-destructive"
         >
           <HugeiconsIcon
             icon={Alert02Icon}
-            size={14}
+            size={15}
             strokeWidth={2}
             className="mt-px shrink-0"
           />
-          <p className="text-xs">{state.error}</p>
+          <p className="text-[13px] leading-relaxed font-medium">{state.error}</p>
         </div>
       ) : null}
 
-      <div>
-        <label htmlFor="username" className="mb-1 block text-[11px] font-medium">
-          Username
-        </label>
-        <Input
-          id="username"
-          name="username"
-          // Matched case-insensitively on the server, so the browser's
-          // capitalisation on a phone keyboard can't lock anyone out.
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          autoComplete="username"
-          autoFocus
-          aria-invalid={!!state.error}
-          aria-describedby={state.error ? "login-error" : undefined}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="password" className="mb-1 block text-[11px] font-medium">
-          Password
-        </label>
-        <InputGroup>
-          <InputGroupInput
-            id="password"
-            name="password"
-            type={reveal ? "text" : "password"}
-            // Paired with the username field's `username` above so a password
-            // manager saves and offers them together.
-            autoComplete="current-password"
+      <div className="space-y-4">
+        <div>
+          <label
+            htmlFor="username"
+            className="mb-1.5 block text-[13px] font-medium"
+          >
+            Username
+          </label>
+          <Input
+            id="username"
+            name="username"
+            placeholder="Enter your username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="username"
+            autoFocus
             aria-invalid={!!state.error}
             aria-describedby={state.error ? "login-error" : undefined}
+            className="h-10 rounded-xl px-3.5 text-sm"
           />
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton
-              size="icon-xs"
-              onClick={() => setReveal((r) => !r)}
-              aria-label={reveal ? "Hide password" : "Show password"}
-            >
-              <HugeiconsIcon
-                icon={reveal ? ViewOffIcon : ViewIcon}
-                strokeWidth={1.5}
-              />
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
+        </div>
+
+        <div>
+          <label
+            htmlFor="password"
+            className="mb-1.5 block text-[13px] font-medium"
+          >
+            Password
+          </label>
+          <InputGroup className="h-10 rounded-xl [&_input]:text-sm">
+            <InputGroupInput
+              id="password"
+              name="password"
+              type={reveal ? "text" : "password"}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              aria-invalid={!!state.error}
+              aria-describedby={state.error ? "login-error" : undefined}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                size="icon-xs"
+                onClick={() => setReveal((r) => !r)}
+                aria-label={reveal ? "Hide password" : "Show password"}
+              >
+                <HugeiconsIcon
+                  icon={reveal ? ViewOffIcon : ViewIcon}
+                  strokeWidth={1.5}
+                />
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </div>
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <Button
+        type="submit"
+        size="lg"
+        className="h-10 w-full rounded-xl text-sm font-semibold"
+        disabled={pending}
+      >
         <HugeiconsIcon icon={Login03Icon} strokeWidth={2} />
         {pending ? "Signing in…" : "Sign in"}
       </Button>

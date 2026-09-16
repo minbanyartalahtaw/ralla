@@ -50,3 +50,6 @@ next-env.d.ts
 
 # Claude Code — per-machine settings, not shared
 .claude/settings.local.json
+
+# Database dumps from scripts/backup-db.sh — real customer data, never committed.
+/backups/
