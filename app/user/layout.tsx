@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { adminUsername } from "@/lib/session";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
-import { AssistantSheet } from "./_components/assistant-sheet";
 import { ScrollHeader } from "./_components/scroll-header";
 import { UserBreadcrumb } from "./_components/user-breadcrumb";
 import { UserSidebar } from "./_components/user-sidebar";
@@ -37,9 +36,6 @@ export default async function UserLayout({ children }: LayoutProps<"/user">) {
           {/* Read-only: no crumb is a link. Detail and create pages carry
               their own BackButton, which is the actual way back. */}
           <UserBreadcrumb />
-          <div className="ml-auto flex items-center gap-3">
-            <AssistantSheet />
-          </div>
         </ScrollHeader>
 
         <div className="min-w-0 flex-1 px-5 py-6 lg:px-8 lg:py-8">{children}</div>

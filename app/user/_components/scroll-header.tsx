@@ -48,8 +48,8 @@ export function ScrollHeader({ children }: { children: React.ReactNode }) {
     <header
       data-hidden={hidden || undefined}
       // A hidden header is still in the tab order — it is translated, not
-      // removed — so tabbing into the sidebar trigger or the assistant button
-      // has to bring it back rather than move focus somewhere invisible.
+      // removed — so tabbing into the sidebar trigger has to bring it back
+      // rather than move focus somewhere invisible.
       onFocusCapture={() => setHidden(false)}
       className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-4 transition-transform duration-200 ease-out data-hidden:-translate-y-full motion-reduce:transition-none"
     >
