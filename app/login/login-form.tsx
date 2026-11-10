@@ -5,13 +5,14 @@ import { useActionState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Alert02Icon,
-  Login03Icon,
+  ArrowRight02Icon,
+  LockPasswordIcon,
+  UserIcon,
   ViewIcon,
   ViewOffIcon,
 } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
@@ -57,19 +58,23 @@ export function LoginForm({ next }: { next: string }) {
           >
             Username
           </label>
-          <Input
-            id="username"
-            name="username"
-            placeholder="Enter your username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            autoComplete="username"
-            autoFocus
-            aria-invalid={!!state.error}
-            aria-describedby={state.error ? "login-error" : undefined}
-            className="h-10 rounded-xl px-3.5 text-sm"
-          />
+          <InputGroup className="h-11 rounded-xl bg-card dark:bg-input/30 [&_input]:text-sm">
+            <InputGroupAddon className="pl-3.5">
+              <HugeiconsIcon icon={UserIcon} strokeWidth={1.6} />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="username"
+              name="username"
+              placeholder="Enter your username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="username"
+              autoFocus
+              aria-invalid={!!state.error}
+              aria-describedby={state.error ? "login-error" : undefined}
+            />
+          </InputGroup>
         </div>
 
         <div>
@@ -79,7 +84,10 @@ export function LoginForm({ next }: { next: string }) {
           >
             Password
           </label>
-          <InputGroup className="h-10 rounded-xl [&_input]:text-sm">
+          <InputGroup className="h-11 rounded-xl bg-card dark:bg-input/30 [&_input]:text-sm">
+            <InputGroupAddon className="pl-3.5">
+              <HugeiconsIcon icon={LockPasswordIcon} strokeWidth={1.6} />
+            </InputGroupAddon>
             <InputGroupInput
               id="password"
               name="password"
@@ -89,9 +97,9 @@ export function LoginForm({ next }: { next: string }) {
               aria-invalid={!!state.error}
               aria-describedby={state.error ? "login-error" : undefined}
             />
-            <InputGroupAddon align="inline-end">
+            <InputGroupAddon align="inline-end" className="pr-3">
               <InputGroupButton
-                size="icon-xs"
+                size="icon-sm"
                 onClick={() => setReveal((r) => !r)}
                 aria-label={reveal ? "Hide password" : "Show password"}
               >
@@ -108,11 +116,15 @@ export function LoginForm({ next }: { next: string }) {
       <Button
         type="submit"
         size="lg"
-        className="h-10 w-full rounded-xl text-sm font-semibold"
+        className="group h-11 w-full rounded-xl text-sm font-semibold"
         disabled={pending}
       >
-        <HugeiconsIcon icon={Login03Icon} strokeWidth={2} />
         {pending ? "Signing in…" : "Sign in"}
+        <HugeiconsIcon
+          icon={ArrowRight02Icon}
+          strokeWidth={2}
+          className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+        />
       </Button>
     </form>
   );
