@@ -1,23 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SquareLock02Icon } from "@hugeicons/core-free-icons";
 
+import { RallaMark, RallaWordmark } from "@/components/ralla-logo";
 import { safeNextPath } from "@/lib/auth";
-import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
-import { cn } from "@/lib/utils";
 
-import { Blossom } from "./blossom";
 import { LoginForm } from "./login-form";
-
-// Imported rather than referenced by path so the intrinsic 707×353 comes with
-// it — the box is reserved before the bytes arrive, so the form doesn't jump
-// down the page as the logo loads.
-import logoText from "@/public/logo_text.png";
-import logoCircle from "@/public/logo/icon-circle-192.png";
-
-const JOURNEY: DeliveryStatus[] = ["pending", "packing", "shipped", "delivered"];
 
 export const metadata: Metadata = {
   title: "Sign in — RALLA",
@@ -33,75 +22,23 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const target = safeNextPath(typeof next === "string" ? next : undefined);
 
   return (
-    <main className="grid flex-1 bg-sidebar lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-      <aside className="relative isolate flex min-h-44 flex-col justify-between overflow-hidden px-6 pt-7 pb-14 text-sidebar-foreground lg:min-h-0 lg:p-12">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(34rem_26rem_at_100%_0%,var(--ralla-700)_0%,transparent_65%)] opacity-70"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_1px_1px,var(--sidebar-border)_1px,transparent_0)] bg-[size:24px_24px] [mask-image:linear-gradient(135deg,black,transparent_60%)]"
-        />
-        <Blossom className="absolute -top-16 -right-20 -z-10 size-64 animate-[flower-spin_120s_linear_infinite] motion-reduce:animate-none lg:-top-40 lg:-right-40 lg:size-[30rem] xl:-top-44 xl:size-[40rem]" />
-        <Blossom className="absolute right-[12%] bottom-[30%] -z-10 hidden size-14 rotate-12 opacity-60 lg:block" />
-        <Blossom className="absolute right-[30%] bottom-[14%] -z-10 hidden size-8 -rotate-12 opacity-40 xl:block" />
+    <main className="grid flex-1 grid-rows-[auto_1fr] gap-3 bg-background p-3 lg:grid-cols-2 lg:grid-rows-1">
+      <aside className="relative isolate flex min-h-36 flex-col overflow-hidden rounded-3xl bg-sidebar p-6 text-sidebar-foreground lg:min-h-0 lg:p-12">
+        <RallaMark className="pointer-events-none absolute -right-10 -bottom-12 -z-10 size-56 text-sidebar-accent-foreground/10 lg:-right-20 lg:-bottom-24 lg:size-[30rem] xl:size-[36rem]" />
 
-        <div className="flex items-center gap-3">
-          <Image
-            src={logoCircle}
-            alt=""
-            sizes="44px"
-            className="size-11 rounded-full ring-1 ring-sidebar-border"
-          />
-          <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-[0.18em] text-sidebar-accent-foreground">
-              RALLA
-            </p>
-            <p className="text-xs">Order &amp; delivery admin</p>
-          </div>
-        </div>
+        <RallaWordmark className="h-8 w-auto self-start text-sidebar-accent-foreground lg:h-9" />
 
-        <div className="hidden max-w-md lg:block">
+        <div className="mt-14 hidden max-w-sm lg:block">
           <p className="text-4xl leading-[1.1] font-semibold tracking-tight text-balance text-sidebar-accent-foreground xl:text-5xl">
             Every order, from counter to doorstep.
           </p>
-          <ol className="mt-8 flex flex-wrap items-center gap-2">
-            {JOURNEY.map((status, index) => (
-              <li key={status} className="flex items-center gap-2">
-                {index > 0 ? (
-                  <span aria-hidden className="h-px w-4 bg-sidebar-foreground/40" />
-                ) : null}
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                    DELIVERY_STATUS[status].chip,
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn("size-1.5 rounded-full", DELIVERY_STATUS[status].dot)}
-                  />
-                  {DELIVERY_STATUS[status].label}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <p className="mt-4 text-sm">Order &amp; delivery admin</p>
         </div>
       </aside>
 
-      <section className="relative -mt-8 flex items-start justify-center rounded-t-[2rem] bg-background px-6 pt-10 pb-12 lg:mt-0 lg:items-center lg:rounded-t-none lg:rounded-l-[2.5rem] lg:px-12 lg:py-12">
+      <section className="flex items-start justify-center px-3 pt-8 pb-10 lg:items-center lg:px-12 lg:py-12">
         <div className="w-full max-w-sm animate-in duration-500 fade-in slide-in-from-bottom-3 motion-reduce:animate-none">
-          <Image
-            src={logoText}
-            alt="RALLA"
-            preload
-            sizes="140px"
-            className="-ml-3 h-auto w-32"
-          />
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-            Welcome back
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Sign in to manage orders and deliveries.
           </p>

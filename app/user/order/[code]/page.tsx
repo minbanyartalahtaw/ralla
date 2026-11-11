@@ -19,6 +19,7 @@ import {
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
+import { RallaMark, RallaWordmark } from "@/components/ralla-logo";
 import { DownloadInvoice } from "./download-invoice";
 import { OrderNote } from "./order-note";
 
@@ -142,31 +143,32 @@ export default async function OrderDetailPage({
           cramped when a wide window leaves the sheet narrow. */}
       <article
         data-print-sheet
-        className="@container mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
+        className="@container mt-3 overflow-hidden rounded-2xl bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
       >
-        <header className="flex items-start justify-between gap-4 px-5 py-5 @xl:px-8 @xl:py-6">
-          <div className="min-w-0">
-            <p className="text-[15px] font-bold tracking-[0.32em] text-primary uppercase">
-              RALLA
-            </p>
-            <p className="mt-1 text-[11px] leading-none tracking-wide whitespace-nowrap text-muted-foreground">
-              Beauty & Cosmetics
-            </p>
+        <header className="flex items-center justify-between gap-4 bg-sidebar px-5 py-5 text-sidebar-foreground @xl:px-8 @xl:py-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+              <RallaMark className="size-6" />
+            </span>
+            <div className="min-w-0">
+              <RallaWordmark className="h-4 w-auto text-white" />
+              <p className="mt-1.5 text-[11px] leading-none tracking-wide whitespace-nowrap">
+                Beauty & Cosmetics
+              </p>
+            </div>
           </div>
           {/* The letterhead is a fixed pair of short strings — it should take
               the room it needs and let the name give way, never break "RL-"
               onto its own line. */}
           <div className="shrink-0 text-right">
-            <p className="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            <p className="text-[10px] font-semibold tracking-[0.16em] uppercase">
               Invoice
             </p>
-            <h1 className="numeric mt-1 font-mono text-[13px] font-semibold tracking-wide whitespace-nowrap text-foreground">
+            <h1 className="numeric mt-1 font-mono text-[13px] font-semibold tracking-wide whitespace-nowrap text-white">
               {order.code}
             </h1>
           </div>
         </header>
-
-        <div className="h-px bg-border" aria-hidden />
 
         <div className="px-5 py-5 @xl:px-8 @xl:py-6">
           {/* `auto` for the meta, the rest to the address — not the two
@@ -254,7 +256,7 @@ export default async function OrderDetailPage({
           {/* Desktop: real table with generous gutters and tabular nums */}
           <table className={`mt-6 hidden w-full @xl:table ${sheetBody}`}>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-primary/25">
                 <th scope="col" className={`${label} pb-2.5 text-left`}>
                   Item
                 </th>
@@ -328,23 +330,25 @@ export default async function OrderDetailPage({
 
           {/* ── Total ─────────────────────────────────────────────── */}
           <div className="mt-5 flex justify-end">
-            <div className="flex w-full items-center justify-between gap-4 rounded-xl bg-muted/40 px-4 py-3 @xl:max-w-[19rem] @xl:rounded-none @xl:bg-transparent @xl:px-0 @xl:py-0 @xl:border-t @xl:border-border @xl:pt-4">
+            <div className="flex w-full items-center justify-between gap-4 rounded-xl bg-accent px-4 py-3 @xl:max-w-[19rem] @xl:px-5 @xl:py-4">
               <div>
                 <p className={label}>Total</p>
                 <p className="numeric mt-0.5 text-xs text-muted-foreground">
                   {itemCount(order.items)} {itemCount(order.items) === 1 ? "item" : "items"}
                 </p>
               </div>
-              <p className="numeric text-xl font-bold tracking-tight text-foreground @xl:text-2xl">
+              <p className="numeric text-xl font-bold tracking-tight text-primary @xl:text-2xl">
                 {formatKyat(order.total)}
               </p>
             </div>
           </div>
 
-          <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground/80">
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+            <RallaMark small className="size-3 text-primary" />
             Thank you for shopping with RALLA
           </p>
         </div>
+        <div className="h-1.5 bg-primary" aria-hidden />
       </article>
 
       {/* Outside the sheet on purpose: an internal note has no business on

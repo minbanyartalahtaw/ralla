@@ -2,8 +2,6 @@
 
 import dynamic from "next/dynamic";
 
-import type { LabelledCount } from "@/lib/orders";
-
 import { FlowerLoader } from "../_components/flower-loader";
 
 import type { TrendBucket, TrendPoint } from "./trend-range";
@@ -25,11 +23,3 @@ export const OrdersChart = dynamic<TrendChartProps>(
   () => import("./orders-chart").then((m) => m.OrdersChart),
   { ssr: false, loading: () => <FlowerLoader size="sm" /> },
 );
-
-export const BreakdownChart = dynamic<{
-  data: LabelledCount[];
-  unit: string;
-}>(() => import("./breakdown-chart").then((m) => m.BreakdownChart), {
-  ssr: false,
-  loading: () => <FlowerLoader size="sm" />,
-});

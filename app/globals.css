@@ -355,6 +355,8 @@
   --primary: var(--ralla-600);
   --muted: var(--sand-100);
   --muted-foreground: var(--sand-500);
+  --accent: var(--ralla-25);
+  --accent-foreground: var(--ralla-900);
   --border: var(--sand-200);
   --destructive: #b91c1c;
   --sidebar: var(--ralla-900);

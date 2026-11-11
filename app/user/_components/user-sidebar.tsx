@@ -48,6 +48,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
+import { RallaMark, RallaWordmark } from "@/components/ralla-logo";
+
 import { ThemeToggleItem } from "./theme-toggle-item";
 
 /**
@@ -81,18 +83,13 @@ export function UserSidebar({ username }: { username: string }) {
               tooltip="RALLA"
               render={<Link href="/user/dashboard" />}
             >
-              {/* Square and legible at any width, so it doubles as the icon
-                  once the rail collapses — no separate fallback needed. The
-                  emoji carries its own colour, so no badge behind it. */}
               <span
-                className="flex size-7 shrink-0 items-center justify-center text-[18px]"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"
                 aria-hidden
               >
-                🌸
+                <RallaMark small className="size-4" />
               </span>
-              <span className="text-sm font-semibold tracking-[0.18em]">
-                RALLA
-              </span>
+              <RallaWordmark className="h-3.5! w-auto! text-sidebar-accent-foreground" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

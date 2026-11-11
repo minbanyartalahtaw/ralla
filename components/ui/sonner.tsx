@@ -47,7 +47,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       richColors
       className="toaster group"
       icons={{
-        success: iconChip("bg-delivered", CheckmarkCircle02Icon),
+        success: iconChip("bg-primary", CheckmarkCircle02Icon),
         info: iconChip("bg-packing", InformationCircleIcon),
         warning: iconChip("bg-shipped", Alert02Icon),
         error: iconChip("bg-pending", MultiplicationSignCircleIcon),
@@ -65,9 +65,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
           // Rounder than the app's usual --radius — a toast is a transient
           // card, not chrome, so it can afford to look softer than a button.
           "--border-radius": "var(--radius-xl)",
-          "--success-bg": "var(--delivered-soft)",
-          "--success-border": "var(--delivered)",
-          "--success-text": "var(--delivered)",
+          "--success-bg":
+            "color-mix(in oklab, var(--primary) 8%, var(--popover))",
+          "--success-border": "var(--primary)",
+          "--success-text": "var(--popover-foreground)",
           "--warning-bg": "var(--shipped-soft)",
           "--warning-border": "var(--shipped)",
           "--warning-text": "var(--shipped)",

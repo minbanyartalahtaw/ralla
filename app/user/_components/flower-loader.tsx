@@ -1,3 +1,5 @@
+import { RallaMark } from "@/components/ralla-logo";
+
 /**
  * The one loading state for the whole admin app — the sidebar's own mark
  * (see user-sidebar.tsx), spinning. Used both for whole-route loading
@@ -19,12 +21,9 @@ export function FlowerLoader({
           : "flex flex-col items-center justify-center gap-2 py-10"
       }
     >
-      <span
-        className={`animate-flower-spin ${size === "lg" ? "text-5xl" : "text-2xl"}`}
-        aria-hidden
-      >
-        🌸
-      </span>
+      <RallaMark
+        className={`animate-pulse text-primary motion-reduce:animate-none ${size === "lg" ? "size-14" : "size-8"}`}
+      />
       {label ? (
         <p className="text-xs text-muted-foreground">{label}</p>
       ) : null}

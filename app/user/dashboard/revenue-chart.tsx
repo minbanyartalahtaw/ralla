@@ -37,7 +37,7 @@ export function RevenueChart({
   bucket: TrendBucket;
 }) {
   return (
-    <ChartContainer config={config} className="aspect-auto h-[220px] w-full">
+    <ChartContainer config={config} className="aspect-auto h-[180px] w-full">
       <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 4 }}>
         {/* Horizontal only: vertical rules add ink without helping read a value
             off the y-axis, and the date ticks already mark the columns. */}

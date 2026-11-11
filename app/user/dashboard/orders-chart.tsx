@@ -34,7 +34,7 @@ export function OrdersChart({
   bucket: TrendBucket;
 }) {
   return (
-    <ChartContainer config={config} className="aspect-auto h-[220px] w-full">
+    <ChartContainer config={config} className="aspect-auto h-[180px] w-full">
       <BarChart
         accessibilityLayer
         data={data}
