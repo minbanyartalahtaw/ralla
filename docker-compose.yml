@@ -20,7 +20,7 @@ services:
       TZ: Asia/Yangon
       PGTZ: Asia/Yangon
     ports:
-      - "5432:5432"
+      - "5554:5432"
     volumes:
       # Postgres 18+ wants the mount one level up from `data`, so pg_upgrade
       # can work across a single mount point. Mounting .../data directly makes
