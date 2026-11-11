@@ -4,11 +4,12 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { clearSession, createSession, safeNextPath } from "@/lib/auth";
-import { checkCredentials } from "@/lib/session";
+import { DUMMY_HASH, verifyPassword } from "@/lib/password";
+import { findStaffByUsername } from "@/lib/staff-store";
 import type { LoginState } from "./state";
 
 /**
- * Throttle, because one shared login is the easiest thing in the world to guess
+ * Throttle, because a login form is the easiest thing in the world to guess
  * at in bulk.
  *
  * In-memory and per-instance, so it is a speed bump rather than a wall: it
@@ -59,17 +60,25 @@ export async function signInAction(
     return { error: "Too many attempts. Try again in a few minutes." };
   }
 
-  if (!checkCredentials(username, password)) {
-    // One message for both halves on purpose. Saying which one was wrong would
-    // let someone confirm the username on its own, and with a shared login
-    // that is half the secret handed over.
+  const staff = await findStaffByUsername(username);
+  // Always one scrypt run, found or not, so the timing doesn't say whether the
+  // username exists. A deactivated account fails the same way as a wrong
+  // password — it shouldn't be possible to tell it is there.
+  const passwordOk = await verifyPassword(
+    password,
+    staff?.passwordHash ?? (await DUMMY_HASH),
+  );
+
+  if (!staff || !staff.active || !passwordOk) {
+    // One message for every miss on purpose. Saying which part was wrong would
+    // let someone confirm a username on its own.
     return { error: "That username or password isn't right." };
   }
 
   // A successful sign-in clears the count, so a staff member who mistyped
   // twice this morning isn't still carrying it this afternoon.
   attempts.delete(key);
-  await createSession();
+  await createSession(staff);
 
   // Outside any try/catch — redirect() signals by throwing, and swallowing it
   // would leave the browser sitting on the login form with a live session.

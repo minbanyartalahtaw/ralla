@@ -28,6 +28,7 @@ const TRAILS = {
   "/user/customer/new": ["Customers", "New customer"],
   "/user/product": ["Products"],
   "/user/product/new": ["Products", "New product"],
+  "/user/settings": ["Settings"],
   // Unlinked and URL-only, but it still has to name itself — without a row
   // here the trail falls back to "Dashboard", which would be a lie.
   "/user/theme": ["Theme reference"],

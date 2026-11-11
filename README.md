@@ -34,11 +34,11 @@ cp .env.example .env      # the defaults match docker-compose.yml
 npm run db:up             # start Postgres
 npm run db:migrate        # apply migrations
 npm run db:seed           # load the development fixtures
+npm run admin:create            # make the first admin (prompts for a password)
 npm run dev
 ```
 
-Then open <http://localhost:3000> and sign in with the `ADMIN_USERNAME` /
-`ADMIN_PASSWORD` from `.env` (`admin` / `ralla_dev_only` out of the box).
+Then open <http://localhost:3000> and sign in with the account you just made.
 
 > `npm run db:migrate` applies the migrations and then keeps running instead of
 > exiting. Ctrl+C once it says it is done is safe — follow it with
@@ -46,16 +46,17 @@ Then open <http://localhost:3000> and sign in with the `ADMIN_USERNAME` /
 
 ### Environment
 
-Every variable is documented in `.env.example`. The four that matter:
+Every variable is documented in `.env.example`. The three that matter:
 
 - `DATABASE_URL` — Postgres connection string.
 - `SESSION_SECRET` — signs the session cookie. Generate with `openssl rand -base64 32`.
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD` — the shared staff login.
 - `GEMINI_API_KEY` — optional; powers the assistant sheet.
 
-Changing any of `SESSION_SECRET`, `ADMIN_USERNAME` or `ADMIN_PASSWORD` signs
-everyone out, deliberately: the signing key is mixed from all three, so rotating
-a leaked password actually revokes the cookies that were issued under it.
+Changing `SESSION_SECRET` signs everyone out. Accounts live in the `staff` table
+(roles `staff` and `admin`). `npm run admin:create` makes the first
+admin and refuses to run once one exists; other accounts are meant to be created
+in the app. Changing a password, or setting `active = false`, ends that person's
+sessions on their next request.
 
 ## Commands
 
@@ -106,8 +107,8 @@ directory only once a second route needs them.
   is the row staff are already looking at.
 - **Overselling is refused** at three layers, and only the last one — a
   `stock >= n` condition on the UPDATE — is the actual guarantee.
-- **Auth is one shared username and password.** No accounts, so nothing can yet
-  say *who* moved an order.
+- **Auth is per-person accounts** in the `staff` table, role `staff` or `admin`.
+  The role is recorded but nothing is gated by it yet.
 
 `CLAUDE.md` has the full version of all of this, including the theme rules and
 why each decision went the way it did. **Before running a migration against

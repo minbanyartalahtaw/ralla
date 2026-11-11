@@ -36,6 +36,13 @@ enum PaymentMethod {
   refunded
 }
 
+/// What a signed-in person may do. Only the label is stored here; what each
+/// role is allowed to do is decided in code (see requireAdmin() in lib/auth.ts).
+enum StaffRole {
+  staff
+  admin
+}
+
 /// Someone who buys from the shop.
 ///
 /// `id` is the identity and the only thing other records point at. Staff find
@@ -178,4 +185,27 @@ model OrderStatusEvent {
 
   @@index([orderId, changedAt])
   @@map("order_status_events")
+}
+
+/// A person who can sign in to the admin app. Replaces the shared
+/// ADMIN_USERNAME / ADMIN_PASSWORD pair that used to live in the environment.
+///
+/// `username` is stored trimmed and lowercased, so the unique index is also the
+/// case-insensitive match the login form needs.
+/// `passwordHash` is `scrypt$<salt>$<hash>` from lib/password.ts — never the
+/// password itself. `active` is how someone is switched off without deleting
+/// them: a deactivated person's cookie stops working on its next request.
+model Staff {
+  id           Int       @id @default(autoincrement())
+  /// Real name, for display. Not unique and not used to sign in.
+  name         String    @default("")
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  role         StaffRole @default(staff)
+  active       Boolean   @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("staff")
 }

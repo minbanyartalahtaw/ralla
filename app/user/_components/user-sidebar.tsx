@@ -10,6 +10,7 @@ import {
   Logout01Icon,
   Package02Icon,
   PlusSignIcon,
+  Settings02Icon,
   UnfoldMoreIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
@@ -69,7 +70,7 @@ const ORDER_NAV = [
   { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
 ] as const;
 
-export function UserSidebar({ username }: { username: string }) {
+export function UserSidebar({ name }: { name: string }) {
   const pathname = usePathname();
   const [signOutOpen, setSignOutOpen] = useState(false);
 
@@ -143,13 +144,13 @@ export function UserSidebar({ username }: { username: string }) {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <SidebarMenuButton size="lg" tooltip={username}>
+                  <SidebarMenuButton size="lg" tooltip={name}>
                     <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[11px] font-bold text-sidebar-primary-foreground uppercase">
-                      {username.slice(0, 1)}
+                      {name.slice(0, 1)}
                     </span>
                     <span className="grid flex-1 text-left leading-tight">
                       <span className="truncate text-xs font-medium">
-                        {username}
+                        {name}
                       </span>
                     </span>
                     <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={1.5} />
@@ -165,6 +166,11 @@ export function UserSidebar({ username }: { username: string }) {
           
               >
 
+
+                <DropdownMenuItem render={<Link href="/user/settings" />}>
+                  <HugeiconsIcon icon={Settings02Icon} strokeWidth={1.5} />
+                  Settings
+                </DropdownMenuItem>
 
                 <ThemeToggleItem />
 
@@ -187,8 +193,7 @@ export function UserSidebar({ username }: { username: string }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Sign out?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    You&apos;ll need the shared username and password to sign
-                    back in.
+                    You&apos;ll need your username and password to sign back in.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

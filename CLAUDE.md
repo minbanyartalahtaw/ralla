@@ -230,26 +230,41 @@ than improvising.
 
 ## Auth
 
-**One shared username and password, no accounts.** `ADMIN_USERNAME` and
-`ADMIN_PASSWORD` in the environment are the whole of it — there is no `Staff` table, and
-the username is a second thing to *know*, not a second *person*. The session still
-carries no identity, which is why `OrderStatusEvent.changedBy` is written empty.
-Per-staff accounts are the obvious next step; until then nothing can say *who* moved an
-order. Usernames are matched case-insensitively and trimmed, so a phone keyboard's
-capitalisation can't lock anyone out.
+**Accounts are rows in the `staff` table**, with a `role` of `staff` or `admin`. The
+old shared `ADMIN_USERNAME` / `ADMIN_PASSWORD` env pair is gone; only `SESSION_SECRET`
+remains. `name` is the display name (the only thing the sidebar footer shows — no username, no role); the username is what signs in. Usernames are stored trimmed and lowercased, so the unique index is the
+case-insensitive match. Passwords are scrypt hashes from `lib/password.ts`
+(`scrypt$<salt>$<hash>`) — never stored or logged in the clear. `active = false`
+switches someone off without deleting them.
 
-A wrong username and a wrong password give the **same** message, and both halves are
-always compared (`&`, never `&&`). Saying which one missed — in the text or in the
-timing — would let someone confirm the username alone, and with a shared login that is
-half the secret.
+Each person changes their own name and password at `/user/settings` (the id comes from
+the session, never the form). A password change re-issues the current browser's cookie;
+every other cookie for that person dies on its next request via `pv`.
+
+There is **no sign-up and no staff-management UI yet**. The only way to make an account
+is `npm run admin:create` (prompts for name, username and password; or `ADMIN_NAME_INIT` / `ADMIN_USERNAME_INIT` / `ADMIN_PASSWORD_INIT`),
+which creates the **first admin and refuses to run once any admin exists** — it can't
+add a second admin, add `staff`, or reset a password. Creating `staff` accounts is meant
+to happen in the UI, which is the next step. Today the role is recorded but not displayed,
+and `requireAdmin()` exists, but nothing calls it: `staff` and `admin` can do
+the same things. `OrderStatusEvent.changedBy` is still written empty even though the
+session now knows who it is.
+
+A wrong username, a wrong password and a deactivated account give the **same** message,
+and the login always runs one scrypt verification (against `DUMMY_HASH` when the
+username doesn't exist), so neither the text nor the timing says which part missed.
 
 The session is a cookie holding `<payload>.<HMAC-SHA256>` from `lib/session.ts`, signed
-with a key mixed from `SESSION_SECRET` **and both credentials**, fed through JSON so the
-pair can't run together. Mixing them in is what makes rotating them mean something: you
-change a shared login precisely because someone should no longer have access, and a key
-derived from the secret alone would leave their cookie valid for the rest of the week.
-The expiry lives inside the signed payload, not just in the cookie's Max-Age — Max-Age
-is a hint to a browser, and a replayed cookie never expires.
+with `SESSION_SECRET`. The payload is `{ sid, role, pv, exp }`: the staff id, the role
+at sign-in, a fingerprint of the password hash, and the expiry. The expiry lives inside
+the signed payload, not just in the cookie's Max-Age — Max-Age is a hint to a browser,
+and a replayed cookie never expires.
+
+The cookie only proves *we issued it*. `getCurrentStaff()` in `lib/auth.ts` re-reads the
+row on every request and rejects the session when the person is gone, inactive, or `pv`
+no longer matches the current password hash — so deactivating someone or changing their
+password revokes their cookie immediately, not at expiry. The role used is the row's
+current one, not the cookie's.
 
 Two layers guard the app, and they are not redundant:
 
@@ -260,17 +275,20 @@ Two layers guard the app, and they are not redundant:
 - `requireSession()` from `lib/auth.ts` runs at the top of **every** Server Action. A
   Server Action is an ordinary POST, so this is what refuses one that never navigated
   through the proxy. `searchCustomersAction` is the sharp case — it returns phone
-  numbers and addresses.
+  numbers and addresses. It checks the database, and clears a stale cookie before
+  redirecting (a Server Action may delete cookies; a render may not).
+- Because the proxy can't see the database, a cookie that verifies but belongs to a
+  removed/deactivated person would loop `/user` → `/login` → `/user`. `app/user/layout.tsx`
+  breaks it by redirecting to `/login/expired`, a route handler that deletes the cookie.
 
 `?next=` always goes through `safeNextPath()`, which allows only paths inside `/user`.
 `//evil.example` starts with `/` and would sail past a naive prefix test.
 
-Login is throttled in memory, 8 attempts per 10 minutes per IP. One shared login is the
-easiest thing in the world to guess at in bulk. It resets on deploy and a forged
-`x-forwarded-for` gets a fresh bucket, so move it to Postgres if this ever faces the
-open internet.
+Login is throttled in memory, 8 attempts per 10 minutes per IP. It resets on deploy and
+a forged `x-forwarded-for` gets a fresh bucket, so move it to Postgres if this ever
+faces the open internet.
 
-`/` (the style guide) is deliberately public. Everything real lives under `/user`.
+`/` only redirects. Everything real lives under `/user`.
 
 ## Conventions
 

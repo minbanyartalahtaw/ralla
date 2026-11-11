@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 
-import { adminUsername } from "@/lib/session";
+import { redirect } from "next/navigation";
+
+import { getCurrentStaff } from "@/lib/auth";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 import { ScrollHeader } from "./_components/scroll-header";
@@ -10,14 +12,18 @@ import { UserSidebar } from "./_components/user-sidebar";
 export default async function UserLayout({ children }: LayoutProps<"/user">) {
   // Sidebar writes its open/closed state to this cookie. Reading it here keeps
   // the server render in sync, so a collapsed sidebar doesn't flash open.
+  const staff = await getCurrentStaff();
+  // The cookie verified (proxy.ts let us in) but the person behind it is gone,
+  // deactivated, or changed their password. A render can't delete a cookie, so
+  // hand off to a route that can — plain /login would be bounced straight back.
+  if (!staff) redirect("/login/expired");
+
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      {/* Read here, not in the sidebar: the sidebar is a Client Component and
-          `process.env` is a server-side thing. */}
-      <UserSidebar username={adminUsername()} />
+      <UserSidebar name={staff.name} />
       {/* min-w-0: without it, main (a flex item of the sidebar row) takes an
           automatic min-width equal to its content's min-content size — a wide
           table (e.g. Orders' min-w-[1240px]) then forces the whole page to

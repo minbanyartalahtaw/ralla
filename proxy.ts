@@ -16,12 +16,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { AFTER_LOGIN } from "@/lib/auth";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { SESSION_COOKIE, readSessionToken } from "@/lib/session";
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const signedIn = verifySessionToken(token);
+  const signedIn = readSessionToken(token) !== null;
 
   if (!signedIn && pathname.startsWith("/user")) {
     const login = new URL("/login", request.nextUrl);
