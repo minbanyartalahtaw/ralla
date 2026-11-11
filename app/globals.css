@@ -102,6 +102,9 @@
 
   --radius: 0.5rem;
 
+  --brand-cream: #fcfdd1;
+  --brand-coral: #ff8384;
+
   /* ── Delivery / order status — RALLA-specific, no shadcn equivalent ───────
      Deliberately OUTSIDE the berry hue family (337–347°) so a status can
      never be mistaken for brand chrome. Always pair the color with a label. */
@@ -251,6 +254,9 @@
   --color-ralla-700: var(--ralla-700);
   --color-ralla-800: var(--ralla-800);
   --color-ralla-900: var(--ralla-900);
+
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-coral: var(--brand-coral);
 
   --font-sans: var(--font-inter);
   --font-heading: var(--font-inter);

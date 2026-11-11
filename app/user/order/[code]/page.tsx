@@ -145,13 +145,11 @@ export default async function OrderDetailPage({
         data-print-sheet
         className="@container mt-3 overflow-hidden rounded-2xl bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
       >
-        <header className="flex items-center justify-between gap-4 bg-sidebar px-5 py-5 text-sidebar-foreground @xl:px-8 @xl:py-6">
+        <header className="flex items-center justify-between gap-4 bg-brand-cream px-5 py-5 text-foreground/70 @xl:px-8 @xl:py-6">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
-              <RallaMark className="size-6" />
-            </span>
+            <RallaMark className="size-12 text-brand-coral" />
             <div className="min-w-0">
-              <RallaWordmark className="h-4 w-auto text-white" />
+              <RallaWordmark className="h-5 w-auto text-brand-coral" />
               <p className="mt-1.5 text-[11px] leading-none tracking-wide whitespace-nowrap">
                 Beauty & Cosmetics
               </p>
@@ -164,7 +162,7 @@ export default async function OrderDetailPage({
             <p className="text-[10px] font-semibold tracking-[0.16em] uppercase">
               Invoice
             </p>
-            <h1 className="numeric mt-1 font-mono text-[13px] font-semibold tracking-wide whitespace-nowrap text-white">
+            <h1 className="numeric mt-1 font-mono text-[13px] font-semibold tracking-wide whitespace-nowrap text-foreground">
               {order.code}
             </h1>
           </div>
@@ -256,7 +254,7 @@ export default async function OrderDetailPage({
           {/* Desktop: real table with generous gutters and tabular nums */}
           <table className={`mt-6 hidden w-full @xl:table ${sheetBody}`}>
             <thead>
-              <tr className="border-b border-primary/25">
+              <tr className="border-b border-brand-coral/50">
                 <th scope="col" className={`${label} pb-2.5 text-left`}>
                   Item
                 </th>
@@ -330,25 +328,25 @@ export default async function OrderDetailPage({
 
           {/* ── Total ─────────────────────────────────────────────── */}
           <div className="mt-5 flex justify-end">
-            <div className="flex w-full items-center justify-between gap-4 rounded-xl bg-accent px-4 py-3 @xl:max-w-[19rem] @xl:px-5 @xl:py-4">
+            <div className="flex w-full items-center justify-between gap-4 rounded-xl bg-brand-cream px-4 py-3 @xl:max-w-[19rem] @xl:px-5 @xl:py-4">
               <div>
                 <p className={label}>Total</p>
                 <p className="numeric mt-0.5 text-xs text-muted-foreground">
                   {itemCount(order.items)} {itemCount(order.items) === 1 ? "item" : "items"}
                 </p>
               </div>
-              <p className="numeric text-xl font-bold tracking-tight text-primary @xl:text-2xl">
+              <p className="numeric text-xl font-bold tracking-tight text-foreground @xl:text-2xl">
                 {formatKyat(order.total)}
               </p>
             </div>
           </div>
 
           <p className="mt-6 flex items-center justify-center gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            <RallaMark small className="size-3 text-primary" />
+            <RallaMark small className="size-4 text-brand-coral" />
             Thank you for shopping with RALLA
           </p>
         </div>
-        <div className="h-1.5 bg-primary" aria-hidden />
+        <div className="h-1.5 bg-brand-coral" aria-hidden />
       </article>
 
       {/* Outside the sheet on purpose: an internal note has no business on
