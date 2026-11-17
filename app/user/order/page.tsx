@@ -191,6 +191,7 @@ export default async function OrdersPage({
               {orders.map((o) => (
                 <TableRow
                   key={o.id}
+                  data-order-code={o.code}
                   // Berry rather than the default grey, so a marked row is
                   // clearly *chosen* and not just the one under the cursor —
                   // hover is grey and the two would otherwise look alike.

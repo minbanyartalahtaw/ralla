@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentStaff } from "@/lib/auth";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
+import { OrderReturn } from "./_components/order-return";
 import { ScrollHeader } from "./_components/scroll-header";
 import { UserBreadcrumb } from "./_components/user-breadcrumb";
 import { UserSidebar } from "./_components/user-sidebar";
@@ -24,6 +25,7 @@ export default async function UserLayout({ children }: LayoutProps<"/user">) {
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <UserSidebar name={staff.name} />
+      <OrderReturn />
       {/* min-w-0: without it, main (a flex item of the sidebar row) takes an
           automatic min-width equal to its content's min-content size — a wide
           table (e.g. Orders' min-w-[1240px]) then forces the whole page to

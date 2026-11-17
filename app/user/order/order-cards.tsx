@@ -85,6 +85,7 @@ export function OrderCards({
         return (
           <li
             key={o.id}
+            data-order-code={o.code}
             // `focus-within` rather than `focus-visible`: the thing being
             // focused is the overlay link inside, not the card itself, so the
             // card has to react to focus landing anywhere in it.

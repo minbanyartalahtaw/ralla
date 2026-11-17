@@ -411,6 +411,55 @@
 }
 
 /* ============================================================================
+   Returning to the orders list
+
+   The order you just came back from snaps a berry ring in from a little way
+   out, holds it a moment so the eye can land, then lets it fade. Outline only,
+   so the card's own border and shadow are never touched and nothing jumps when
+   the animation ends.
+   ========================================================================== */
+[data-returned] {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: order-return 1900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes order-return {
+  0% {
+    outline-color: color-mix(in oklab, var(--primary) 0%, transparent);
+    outline-offset: 12px;
+  }
+  16% {
+    outline-color: var(--primary);
+    outline-offset: 2px;
+  }
+  68% {
+    outline-color: var(--primary);
+    outline-offset: 2px;
+  }
+  100% {
+    outline-color: color-mix(in oklab, var(--primary) 0%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+@keyframes order-return-still {
+  0%,
+  68% {
+    outline-color: var(--primary);
+  }
+  100% {
+    outline-color: color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-returned] {
+    animation-name: order-return-still;
+  }
+}
+
+/* ============================================================================
    Print — the invoice sheet, and nothing else
 
    An order's page marks its sheet `data-print-sheet`; printing that page has to
