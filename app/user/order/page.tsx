@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  ArrowRight01Icon,
   Note01Icon,
   PlusSignIcon,
   Search01Icon,
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
 import {
   Table,
+  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -25,7 +25,6 @@ import {
 } from "@/lib/order-store";
 
 import { Pager } from "./pager";
-import { SelectableBody } from "./selectable-body";
 import { StatusSelect } from "./status-select";
 import { StatusTabs } from "./status-tabs";
 import { OrderCards } from "./order-cards";
@@ -182,22 +181,24 @@ export default async function OrdersPage({
                 <TableHead className={th}>Payment</TableHead>
                 <TableHead className={th}>Date</TableHead>
                 <TableHead className={th}>Delivery</TableHead>
-                <TableHead className={th}>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
               </TableRow>
             </TableHeader>
-            <SelectableBody>
+            <TableBody>
               {orders.map((o) => (
                 <TableRow
                   key={o.id}
                   data-order-code={o.code}
-                  // Berry rather than the default grey, so a marked row is
-                  // clearly *chosen* and not just the one under the cursor —
-                  // hover is grey and the two would otherwise look alike.
-                  className="data-[state=selected]:bg-primary/10"
+                  // The containing block for the whole-row link below.
+                  className="relative"
                 >
                   <TableCell>
+                    {/* Whole-row hit area, as on the cards. Addressed by
+                        `code`, not `id`, so a copied link reads as the row. */}
+                    <Link
+                      href={`/user/order/${o.code}`}
+                      aria-label={`View details for order ${o.code}`}
+                      className="absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                    />
                     <span className="inline-flex items-center gap-1.5">
                       <span className="numeric font-mono text-[11px] font-medium">
                         <OrderCode code={o.code} query={query} />
@@ -210,7 +211,7 @@ export default async function OrdersPage({
                           icon={Note01Icon}
                           size={12}
                           strokeWidth={2}
-                          className="shrink-0 text-muted-foreground"
+                          className="relative shrink-0 text-muted-foreground"
                           aria-label={`Note: ${o.note}`}
                         >
                           <title>{o.note}</title>
@@ -250,32 +251,18 @@ export default async function OrdersPage({
                       {PAYMENT_METHOD[o.paymentMethod]}
                     </span>
                   </TableCell>
-                                    <TableCell className="numeric text-muted-foreground">
+                  <TableCell className="numeric text-muted-foreground">
                     {formatDate(o.placedAt)}
                   </TableCell>
                   <TableCell>
-                    <StatusSelect orderId={o.id} code={o.code} status={o.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {/* Addressed by `code`, not `id`: the code is what's on
-                        screen, so a copied link reads as the row it came from. */}
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      nativeButton={false}
-                      render={<Link href={`/user/order/${o.code}`} />}
-                      aria-label={`View details for order ${o.code}`}
-                    >
-                      View details
-                      <HugeiconsIcon
-                        icon={ArrowRight01Icon}
-                        data-icon="inline-end"
-                      />
-                    </Button>
+                    {/* Raised above the row link so the picker still opens. */}
+                    <div className="relative w-fit">
+                      <StatusSelect orderId={o.id} code={o.code} status={o.status} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
-            </SelectableBody>
+            </TableBody>
           </Table>
         ) : (
           <OrderCards orders={orders} query={query} />

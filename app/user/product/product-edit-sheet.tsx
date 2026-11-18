@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TableRow } from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -27,10 +28,13 @@ import {
 export function ProductEditSheet({
   product,
   className,
+  as = "li",
   children,
 }: {
   product: Product;
   className?: string;
+  /** The row element that opens the sheet: a list item, or a table row. */
+  as?: "li" | "tr";
   children: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -148,7 +152,13 @@ export function ProductEditSheet({
           for free. */}
       <SheetTrigger
         nativeButton={false}
-        render={<li className={className} aria-label={`Edit ${product.name}`} />}
+        render={
+          as === "tr" ? (
+            <TableRow className={className} aria-label={`Edit ${product.name}`} />
+          ) : (
+            <li className={className} aria-label={`Edit ${product.name}`} />
+          )
+        }
       >
         {children}
       </SheetTrigger>

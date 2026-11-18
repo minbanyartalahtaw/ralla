@@ -1,7 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Package02Icon, PlusSignIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import {
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  Package02Icon,
+  PlusSignIcon,
+  Search01Icon,
+} from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
@@ -13,15 +19,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatKyat } from "@/lib/orders";
 import { listProducts, normalizeProductQuery } from "@/lib/product-store";
+import { PRODUCT_ACTIVITY, productActivity } from "@/lib/products";
 
-import { ActiveSelect } from "./active-select";
-import { NameCell } from "./name-cell";
-import { PriceCell } from "./price-cell";
 import { ProductContacts } from "./product-contacts";
+import { ProductEditSheet } from "./product-edit-sheet";
 import { ProductSearch } from "./product-search";
-import { SkuCell } from "./sku-cell";
-import { StockCell } from "./stock-cell";
+import { productsHref } from "./products-href";
 import { ViewSwitch } from "./view-switch";
 
 export const metadata: Metadata = {
@@ -30,14 +35,73 @@ export const metadata: Metadata = {
 
 const th = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
+const SORT_KEYS = ["stock", "price"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
+/** `?sort=stock` is ascending, `?sort=-stock` descending; anything else is unsorted. */
+function parseSort(raw: unknown): { key: SortKey; desc: boolean } | null {
+  if (typeof raw !== "string") return null;
+  const desc = raw.startsWith("-");
+  const key = desc ? raw.slice(1) : raw;
+  return (SORT_KEYS as readonly string[]).includes(key)
+    ? { key: key as SortKey, desc }
+    : null;
+}
+
+/** A header that sorts by its column: ascending first, a second click flips it. */
+function SortHead({
+  label,
+  column,
+  sort,
+  query,
+  className = "",
+}: {
+  label: string;
+  column: SortKey;
+  sort: { key: SortKey; desc: boolean } | null;
+  query: string;
+  className?: string;
+}) {
+  const active = sort?.key === column;
+  const next = active && !sort.desc ? `-${column}` : column;
+  return (
+    <TableHead
+      className={`${th} ${className}`}
+      aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}
+    >
+      <Link
+        href={productsHref({ query, view: "table", sort: next })}
+        scroll={false}
+        className={`inline-flex items-center gap-1 hover:text-foreground ${active ? "text-foreground" : ""}`}
+      >
+        {label}
+        {active ? (
+          <HugeiconsIcon
+            icon={sort.desc ? ArrowDown01Icon : ArrowUp01Icon}
+            size={12}
+            strokeWidth={2.5}
+          />
+        ) : null}
+      </Link>
+    </TableHead>
+  );
+}
+
 export default async function ProductsPage({
   searchParams,
 }: PageProps<"/user/product">) {
-  const { q, view: rawView, created } = await searchParams;
+  const { q, view: rawView, created, sort: rawSort } = await searchParams;
   const query = typeof q === "string" ? q : "";
   // Contact cards are the default; only `?view=table` selects the table.
   const view = rawView === "table" ? "table" : "contact";
+  const sort = parseSort(rawSort);
   const products = await listProducts(query);
+  // Sorted here, not in the query: the whole catalogue is already loaded, and
+  // a stable sort keeps the store's active-then-name order among equal values.
+  if (sort) {
+    const dir = sort.desc ? -1 : 1;
+    products.sort((a, b) => (a[sort.key] - b[sort.key]) * dir);
+  }
   const createdCode = typeof created === "string" ? created : undefined;
 
   // Two kinds of empty: a catalog with nothing in it wants "add one", a search
@@ -129,32 +193,45 @@ export default async function ProductsPage({
             <TableHeader>
               <TableRow className="bg-muted hover:bg-muted">
                 <TableHead className={th}>SKU</TableHead>
-                <TableHead className={`${th}`}>Stock</TableHead>
+                <SortHead label="Stock" column="stock" sort={sort} query={query} />
                 <TableHead className={th}>Name</TableHead>
-                <TableHead className={`${th} text-right`}>Price</TableHead>
+                <SortHead
+                  label="Price"
+                  column="price"
+                  sort={sort}
+                  query={query}
+                  className="text-right"
+                />
                 <TableHead className={th}>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((p) => (
-                <TableRow key={p.id} className={p.isActive ? "" : "opacity-60"}>
-                  <TableCell>
-                    <SkuCell productId={p.id} sku={p.sku} />
-                  </TableCell>
-                  <TableCell>
-                    <StockCell productId={p.id} sku={p.sku} stock={p.stock} />
-                  </TableCell>
-                  <TableCell>
-                    <NameCell productId={p.id} name={p.name} />
-                  </TableCell>
-                  <TableCell>
-                    <PriceCell productId={p.id} sku={p.sku} price={p.price} />
-                  </TableCell>
-                  <TableCell>
-                    <ActiveSelect productId={p.id} isActive={p.isActive} />
-                  </TableCell>
-                </TableRow>
-              ))}
+              {products.map((p) => {
+                const activity = PRODUCT_ACTIVITY[productActivity(p.isActive)];
+                // Read-only: the whole row opens the same edit sheet as the
+                // contact view, so there is one place a product is changed.
+                return (
+                  <ProductEditSheet
+                    key={p.id}
+                    product={p}
+                    as="tr"
+                    className={`cursor-pointer focus-visible:bg-muted/50 focus-visible:outline-none ${p.isActive ? "" : "opacity-60"}`}
+                  >
+                    <TableCell className="font-mono text-[11px] font-medium">{p.sku}</TableCell>
+                    <TableCell className="numeric">{p.stock.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="numeric text-right">{formatKyat(p.price)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[11px] font-medium ${activity.chip}`}
+                      >
+                        <span className={`size-1.5 rounded-full ${activity.dot}`} aria-hidden />
+                        {activity.label}
+                      </span>
+                    </TableCell>
+                  </ProductEditSheet>
+                );
+              })}
             </TableBody>
           </Table>
         )}
