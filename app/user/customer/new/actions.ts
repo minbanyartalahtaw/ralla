@@ -47,5 +47,5 @@ export async function createCustomerAction(
   });
 
   revalidatePath("/user/customer");
-  redirect(`/user/customer?created=${customer.code}`);
+  redirect(`/user/customer?created=${customer.code}&slug=${customer.slug}`);
 }

@@ -29,10 +29,12 @@ import { updateOrderStatusAction } from "./actions";
 export function StatusSelect({
   orderId,
   code,
+  slug,
   status,
 }: {
   orderId: number;
   code: string;
+  slug: string;
   status: DeliveryStatus;
 }) {
   const router = useRouter();
@@ -59,7 +61,7 @@ export function StatusSelect({
         toast.success(`${code} marked ${DELIVERY_STATUS[next].label}.`, {
           action: {
             label: "View details",
-            onClick: () => router.push(`/user/order/${code}`),
+            onClick: () => router.push(`/user/order/${slug}`),
           },
         });
       } catch {

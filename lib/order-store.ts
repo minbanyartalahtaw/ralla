@@ -424,24 +424,20 @@ export async function getOrder(id: number): Promise<OrderWithItems | null> {
 }
 
 /**
- * Lookup by the human-facing `RL-` code, which is what the detail URL carries.
- * Same reasoning as getCustomerByCode(): the code is on screen and immutable,
- * `id` is an internal surrogate nobody ever sees.
- *
- * Uppercased first — codes are stored uppercase, but a URL comes back lowercased
- * often enough that a case-exact match would 404 on a link that is otherwise
- * correct.
+ * Lookup by the random `slug` the detail URL carries — not the `RL-` code,
+ * which is the date plus three letters and so guessable. Lowercased first for
+ * the same reason as getCustomerBySlug().
  *
  * The status history comes along because it is the point of the detail page:
  * the list already shows where an order *is*, only this page says how it got
  * there. Newest first, so the current status is the one staff see without
  * scrolling.
  */
-export async function getOrderByCode(
-  code: string,
+export async function getOrderBySlug(
+  slug: string,
 ): Promise<OrderDetail | null> {
   return prisma.order.findUnique({
-    where: { code: code.trim().toUpperCase() },
+    where: { slug: slug.trim().toLowerCase() },
     include: {
       items: true,
       statusEvents: { orderBy: { changedAt: "desc" } },

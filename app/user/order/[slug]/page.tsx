@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { cache } from "react";
 import type { Metadata } from "next";
-import { getOrderByCode } from "@/lib/order-store";
+import { getOrderBySlug } from "@/lib/order-store";
 import { getCustomer } from "@/lib/customer-store";
 import {
   DELIVERY_STATUS,
@@ -29,13 +29,13 @@ import { OrderNote } from "./order-note";
  * `generateMetadata` and the page body both need the order, and both run on the
  * same request — cache() makes that one query rather than two.
  */
-const loadOrder = cache(getOrderByCode);
+const loadOrder = cache(getOrderBySlug);
 
 export async function generateMetadata({
   params,
-}: PageProps<"/user/order/[code]">): Promise<Metadata> {
-  const { code } = await params;
-  const order = await loadOrder(code);
+}: PageProps<"/user/order/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const order = await loadOrder(slug);
 
   return {
     title: order ? `${order.code} — RALLA` : "Order not found — RALLA",
@@ -89,9 +89,9 @@ function MetaRow({
 export default async function OrderDetailPage({
   params,
   searchParams,
-}: PageProps<"/user/order/[code]">) {
-  const { code } = await params;
-  const order = await loadOrder(code);
+}: PageProps<"/user/order/[slug]">) {
+  const { slug } = await params;
+  const order = await loadOrder(slug);
   if (!order) notFound();
 
   // Set by the edit form's redirect, which lands back here rather than on a
@@ -124,7 +124,7 @@ export default async function OrderDetailPage({
           <Button
             variant="secondary"
             nativeButton={false}
-            render={<Link href={`/user/order/${order.code}/edit`} />}
+            render={<Link href={`/user/order/${order.slug}/edit`} />}
           >
             <HugeiconsIcon icon={PencilEdit02Icon} data-icon="inline-start" />
             Edit
@@ -190,7 +190,7 @@ export default async function OrderDetailPage({
                 <div className="flex flex-wrap items-baseline gap-x-2">
                   {customer ? (
                     <Link
-                      href={`/user/customer/${customer.code}`}
+                      href={`/user/customer/${customer.slug}`}
                       className="font-semibold text-foreground decoration-border underline-offset-2 hover:underline"
                     >
                       {order.customerName}
@@ -354,7 +354,7 @@ export default async function OrderDetailPage({
       <section className="mt-8">
         <h2 className={label}>Note</h2>
         <div className="mt-3 rounded-lg border bg-card px-5 py-4">
-          <OrderNote orderId={order.id} code={order.code} note={order.note} />
+          <OrderNote orderId={order.id} slug={order.slug} note={order.note} />
         </div>
       </section>
 

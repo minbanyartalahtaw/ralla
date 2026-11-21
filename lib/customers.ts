@@ -21,7 +21,7 @@ export type Customer = CustomerModel;
  */
 export type NewCustomer = Omit<
   Customer,
-  "id" | "code" | "createdAt" | "updatedAt" | "avatar"
+  "id" | "code" | "slug" | "createdAt" | "updatedAt" | "avatar"
 >;
 
 /**

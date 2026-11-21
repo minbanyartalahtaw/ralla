@@ -83,7 +83,7 @@ export async function updateOrderAction(
     throw error;
   }
 
-  revalidatePath(`/user/order/${existing.code}`);
+  revalidatePath(`/user/order/${existing.slug}`);
   revalidatePath("/user/order");
   revalidatePath("/user/dashboard");
   // The edit moved units on and off the shelf, so the products table and the
@@ -91,9 +91,9 @@ export async function updateOrderAction(
   revalidatePath("/user/product");
   revalidatePath("/user/order/new");
   // Same for the edit form's picker, on every order.
-  revalidatePath("/user/order/[code]/edit", "page");
+  revalidatePath("/user/order/[slug]/edit", "page");
 
   // `?updated=1` is what the detail page toasts on, and it clears itself from
   // the URL once shown — see CreatedToast.
-  redirect(`/user/order/${existing.code}?updated=1`);
+  redirect(`/user/order/${existing.slug}?updated=1`);
 }

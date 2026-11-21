@@ -14,11 +14,11 @@ import { updateOrderNoteAction } from "../actions";
  */
 export function OrderNote({
   orderId,
-  code,
+  slug,
   note,
 }: {
   orderId: number;
-  code: string;
+  slug: string;
   note: string;
 }) {
   const [value, setValue] = React.useState(note);
@@ -28,7 +28,7 @@ export function OrderNote({
   function save() {
     const data = new FormData();
     data.set("id", String(orderId));
-    data.set("code", code);
+    data.set("slug", slug);
     data.set("note", value);
     startTransition(async () => {
       try {

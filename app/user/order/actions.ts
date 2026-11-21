@@ -59,14 +59,14 @@ export async function updateOrderNoteAction(formData: FormData) {
   if (!Number.isSafeInteger(id) || id < 1) {
     throw new Error("A valid order id is required.");
   }
-  const code = String(formData.get("code") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
   await updateOrderNote(id, note);
 
-  revalidatePath(`/user/order/${code}`);
+  revalidatePath(`/user/order/${slug}`);
   // The edit form carries this same field. Without this it would still hold
   // the note as it was when that page was last rendered, and saving an
   // unrelated change there would quietly put the old text back.
-  revalidatePath("/user/order/[code]/edit", "page");
+  revalidatePath("/user/order/[slug]/edit", "page");
 }

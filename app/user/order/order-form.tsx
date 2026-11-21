@@ -98,7 +98,7 @@ function Label({
 }
 
 /**
- * The order form, shared by /user/order/new and /user/order/[code]/edit.
+ * The order form, shared by /user/order/new and /user/order/[slug]/edit.
  *
  * One component rather than two on purpose: an edit that looked different from
  * the form staff already know would be a second layout to learn for the same

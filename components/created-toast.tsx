@@ -6,14 +6,15 @@ import { toast } from "sonner";
 
 /**
  * Fires a success toast once, right after a Server Action redirects back with a
- * marker in the URL — `?created=<code>` from the create forms, `?updated=1` from
+ * marker in the URL — `?created=<code>` from the create forms (plus `&slug=` for
+ * orders and customers, for the "View details" link), `?updated=1` from
  * the order edit form, which lands back on the record it just changed.
  *
  * Reads `code` from a prop rather than `useSearchParams()` so the list page
  * (a Server Component) can hand it over straight from its already-awaited
  * `searchParams`, with no client-only hook and no Suspense boundary to add.
  *
- * The redirect never carries other query params alongside `created`, so
+ * The redirect carries nothing but `created` (and `slug`), so
  * clearing it by replacing with the bare pathname is safe — there is nothing
  * else to preserve.
  */

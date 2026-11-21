@@ -72,18 +72,15 @@ export async function getCustomer(id: number): Promise<Customer | null> {
 }
 
 /**
- * Lookup by the human-facing `RLC-` code, which is what the detail URL carries.
- * The code is immutable and already on screen, so a copied link stays readable
- * and keeps pointing at the same person — `id`, never displayed, can't promise
- * the first half of that.
+ * Lookup by the random `slug` the detail URL carries. Not the `RLC-` code:
+ * codes are a plain sequence, so a code URL could be guessed by counting.
  *
- * Uppercased first: codes are stored uppercase, but a URL comes back lowercased
- * often enough — hand-typed, or flattened by a chat client — that a case-exact
- * match would 404 on a link that is otherwise correct.
+ * Lowercased first — slugs are stored lowercase hex, and a URL can come back
+ * uppercased by a chat client or hand-typed.
  */
-export async function getCustomerByCode(code: string): Promise<Customer | null> {
+export async function getCustomerBySlug(slug: string): Promise<Customer | null> {
   return prisma.customer.findUnique({
-    where: { code: code.trim().toUpperCase() },
+    where: { slug: slug.trim().toLowerCase() },
   });
 }
 

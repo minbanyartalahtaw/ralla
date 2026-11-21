@@ -1,25 +1,30 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cache } from "react";
 
 import { BackButton } from "@/components/back-button";
-import { getOrderByCode } from "@/lib/order-store";
+import { getOrderBySlug } from "@/lib/order-store";
 import { listProductsForOrder } from "@/lib/product-store";
 
 import { OrderForm, type OrderFormInitial } from "../../order-form";
 import { updateOrderAction } from "./actions";
 
+// The title needs the code, which the slug URL no longer carries.
+const loadOrder = cache(getOrderBySlug);
+
 export async function generateMetadata({
   params,
-}: PageProps<"/user/order/[code]/edit">): Promise<Metadata> {
-  const { code } = await params;
-  return { title: `Edit ${code.toUpperCase()} — RALLA` };
+}: PageProps<"/user/order/[slug]/edit">): Promise<Metadata> {
+  const { slug } = await params;
+  const order = await loadOrder(slug);
+  return { title: order ? `Edit ${order.code} — RALLA` : "Order not found — RALLA" };
 }
 
 export default async function EditOrderPage({
   params,
-}: PageProps<"/user/order/[code]/edit">) {
-  const { code } = await params;
-  const order = await getOrderByCode(code);
+}: PageProps<"/user/order/[slug]/edit">) {
+  const { slug } = await params;
+  const order = await loadOrder(slug);
   if (!order) notFound();
 
   const productIds = order.items
@@ -65,7 +70,7 @@ export default async function EditOrderPage({
           on an invoice, and the status moves from the orders list, which
           records when it moved. */}
       <div className="flex items-center gap-3">
-        <BackButton fallback={`/user/order/${order.code}`} />
+        <BackButton fallback={`/user/order/${order.slug}`} />
         <h1 className="flex min-w-0 items-baseline gap-2 text-lg font-semibold tracking-tight text-foreground">
           Edit
           {/* Never wraps: a code broken after `RL-` reads as a rendering fault

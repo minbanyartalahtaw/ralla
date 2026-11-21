@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { Metadata } from "next";
 
-import { getCustomerByCode } from "@/lib/customer-store";
+import { getCustomerBySlug } from "@/lib/customer-store";
 import { listOrdersByCustomer } from "@/lib/order-store";
 import { formatDate, formatKyat, type OrderWithItems } from "@/lib/orders";
 import { BackButton } from "@/components/back-button";
@@ -13,13 +13,13 @@ import { DetailsCard } from "./details-card";
  * `generateMetadata` and the page body both need the customer, and both run on
  * the same request — cache() makes that one query rather than two.
  */
-const loadCustomer = cache(getCustomerByCode);
+const loadCustomer = cache(getCustomerBySlug);
 
 export async function generateMetadata({
   params,
-}: PageProps<"/user/customer/[code]">): Promise<Metadata> {
-  const { code } = await params;
-  const customer = await loadCustomer(code);
+}: PageProps<"/user/customer/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const customer = await loadCustomer(slug);
 
   return {
     title: customer ? `${customer.name} — RALLA` : "Customer not found — RALLA",
@@ -49,9 +49,9 @@ function settled(orders: OrderWithItems[]) {
 
 export default async function CustomerDetailPage({
   params,
-}: PageProps<"/user/customer/[code]">) {
-  const { code } = await params;
-  const customer = await loadCustomer(code);
+}: PageProps<"/user/customer/[slug]">) {
+  const { slug } = await params;
+  const customer = await loadCustomer(slug);
   if (!customer) notFound();
 
   const orders = await listOrdersByCustomer(customer.id);

@@ -149,11 +149,13 @@ reason to store one: it was a second identity to keep correct, and nothing depen
 it. See the migration comments for the two-step pattern to reuse when dropping a
 column that production is still writing.
 
-**Detail URLs address a record by its `code`, not its `id`.** `/user/customer/RLC-1015`
-is the row staff are already looking at, so a pasted link reads as the record it came
-from; `id` is an internal surrogate that is never displayed. Codes are matched
-case-insensitively — they are stored uppercase, but URLs come back lowercased often
-enough that an exact match would 404 on a link that is otherwise correct.
+**Detail URLs address a record by its `slug`, not its `code` or `id`.** The slug is
+16 random hex characters (`/user/order/9ad83d01f93c4fae`) from a database default, so a
+URL can't be guessed: `RLC-` codes are a plain sequence and `RL-` codes are a date plus
+three letters. The code is still what staff see, search and print — it just never goes
+in a URL. Build every link from `.slug`; old `/RL-…` URLs 404 on purpose, because a
+redirect would let a guessed code through. Slugs are matched lowercased. `id` is an
+internal surrogate that is never displayed.
 
 **An order copies the customer's details, it doesn't just link to them.** `Order`
 carries its own `customer`, `phone`, `city` and `address`. If someone moves house,
@@ -227,6 +229,16 @@ step breaks the deployed app (Prisma names every column in its `SELECT`, so sche
 changes and deploys must be interleaved), and the pooler leaks Prisma's advisory lock so
 the second migration of a session hangs. That file is the runbook — follow it rather
 than improvising.
+
+`20261120000000_add_slugs` is **not yet applied to production**. It only adds columns
+with a default (which also backfills existing rows), so it needs no interleaving:
+migrate first, then deploy. Deploying first breaks every order and customer page.
+
+Locally, `prisma migrate dev` currently refuses and asks to **reset** (wiping data),
+because `20261111000000_staff` was edited after it was applied to the local DB. Don't
+accept the reset: write the migration SQL with `prisma migrate diff
+--from-config-datasource --to-schema prisma/schema.prisma --script` and apply it with
+`prisma migrate deploy`, which never resets.
 
 ## Auth
 

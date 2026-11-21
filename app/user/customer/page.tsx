@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 export default async function CustomersPage({
   searchParams,
 }: PageProps<"/user/customer">) {
-  const { q, created } = await searchParams;
+  const { q, created, slug: createdSlug } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const customers = await listCustomers(query);
   const createdCode = typeof created === "string" ? created : undefined;
@@ -46,7 +46,7 @@ export default async function CustomersPage({
       <CreatedToast
         code={createdCode}
         message={createdCode ? `Customer ${createdCode} added.` : ""}
-        detailHref={createdCode ? `/user/customer/${createdCode}` : undefined}
+        detailHref={typeof createdSlug === "string" ? `/user/customer/${createdSlug}` : undefined}
       />
 
       <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ export default async function CustomersPage({
             {customers.map((c) => (
               <li key={c.id}>
                 <Link
-                  href={`/user/customer/${c.code}`}
+                  href={`/user/customer/${c.slug}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-accent"
                 >
                   <CustomerAvatar

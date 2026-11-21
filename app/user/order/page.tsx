@@ -49,7 +49,7 @@ const th = "text-[11px] font-semibold tracking-wide text-muted-foreground upperc
 export default async function OrdersPage({
   searchParams,
 }: PageProps<"/user/order">) {
-  const { q, status: rawStatus, page: rawPage, created, view: rawView } = await searchParams;
+  const { q, status: rawStatus, page: rawPage, created, slug: createdSlug, view: rawView } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const createdCode = typeof created === "string" ? created : undefined;
   const status = parseDeliveryStatus(
@@ -91,7 +91,7 @@ export default async function OrdersPage({
       <CreatedToast
         code={createdCode}
         message={createdCode ? `Order ${createdCode} created.` : ""}
-        detailHref={createdCode ? `/user/order/${createdCode}` : undefined}
+        detailHref={typeof createdSlug === "string" ? `/user/order/${createdSlug}` : undefined}
       />
 
       <div className="flex items-center gap-3">
@@ -195,7 +195,7 @@ export default async function OrdersPage({
                     {/* Whole-row hit area, as on the cards. Addressed by
                         `code`, not `id`, so a copied link reads as the row. */}
                     <Link
-                      href={`/user/order/${o.code}`}
+                      href={`/user/order/${o.slug}`}
                       aria-label={`View details for order ${o.code}`}
                       className="absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                     />
@@ -257,7 +257,7 @@ export default async function OrdersPage({
                   <TableCell>
                     {/* Raised above the row link so the picker still opens. */}
                     <div className="relative w-fit">
-                      <StatusSelect orderId={o.id} code={o.code} status={o.status} />
+                      <StatusSelect orderId={o.id} code={o.code} slug={o.slug} status={o.status} />
                     </div>
                   </TableCell>
                 </TableRow>

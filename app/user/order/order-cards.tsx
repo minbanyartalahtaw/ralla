@@ -56,7 +56,7 @@ import { StatusSelect } from "./status-select";
  * an `<a>`. Instead the link is a transparent overlay stretched across the
  * card, and the chip sits above it — so clicking anywhere else opens the
  * order, and clicking the chip changes the status without navigating. Like
- * the table, the link addresses the order by `code`, not `id`.
+ * the table, the link addresses the order by `slug`, not `id`.
  *
  * `relative` and nothing more is what lifts the chip: positioned siblings at
  * the same z-index paint in DOM order, and the chip already comes after the
@@ -95,7 +95,7 @@ export function OrderCards({
                 carries no text of its own, so the accessible name has to come
                 from `aria-label`. */}
             <Link
-              href={`/user/order/${o.code}`}
+              href={`/user/order/${o.slug}`}
               aria-label={`View details for order ${o.code}`}
               className="absolute inset-0 rounded-lg focus-visible:outline-none"
             />
@@ -117,7 +117,7 @@ export function OrderCards({
                 </HugeiconsIcon>
               ) : null}
               <div className="relative ms-auto shrink-0">
-                <StatusSelect orderId={o.id} code={o.code} status={o.status} />
+                <StatusSelect orderId={o.id} code={o.code} slug={o.slug} status={o.status} />
               </div>
             </div>
 

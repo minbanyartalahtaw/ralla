@@ -4,6 +4,9 @@
 //   * `id` is an internal surrogate key and is never displayed. `code` is the
 //     human-facing identifier (RL-10429, RLC-1001) and comes from a Postgres
 //     sequence, so two staff saving at once can't mint the same one.
+//   * `slug` is what detail URLs carry: random, so a URL can't be guessed from
+//     a code (customer codes are a plain sequence). Filled by the database
+//     default, which also backfilled every row that existed before it.
 //   * Money is a whole number of kyats. Never a float — see CLAUDE.md.
 //   * Orders COPY the customer's details at save time instead of joining live.
 //     A customer who moves house must not rewrite where past orders were
@@ -50,6 +53,7 @@ enum StaffRole {
 model Customer {
   id   Int    @id @default(autoincrement())
   code String @unique @default(dbgenerated("('RLC-' || nextval('customer_code_seq'))"))
+  slug String @unique @default(dbgenerated("left(replace((gen_random_uuid())::text, '-'::text, ''::text), 16)"))
 
   /// Real name — this is what goes on the delivery label.
   name    String
@@ -82,6 +86,7 @@ model Order {
   /// carries the order date. The unique index is what actually guarantees
   /// uniqueness; createOrder() retries on collision.
   code String @unique
+  slug String @unique @default(dbgenerated("left(replace((gen_random_uuid())::text, '-'::text, ''::text), 16)"))
 
   /// Nullable: a walk-in can be typed in without a saved customer record.
   /// SetNull rather than Cascade — deleting a customer must not erase the

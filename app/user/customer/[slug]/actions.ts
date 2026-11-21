@@ -67,7 +67,7 @@ export async function updateCustomerAction(
     note,
   });
 
-  revalidatePath(`/user/customer/${customer.code}`);
+  revalidatePath(`/user/customer/${customer.slug}`);
   // The customer list shows the name; the order form's search reads the table
   // fresh on every keystroke, so it needs nothing revalidated.
   revalidatePath("/user/customer");
@@ -101,7 +101,7 @@ export async function updateCustomerAvatarAction(
 
   await updateCustomerAvatar(id, avatar);
 
-  revalidatePath(`/user/customer/${customer.code}`);
+  revalidatePath(`/user/customer/${customer.slug}`);
   revalidatePath("/user/customer");
 
   return { ok: true };

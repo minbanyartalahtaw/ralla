@@ -55,7 +55,7 @@ export async function createOrderAction(
   revalidatePath("/user/product");
   revalidatePath("/user/order/new");
   // Same for the edit form's picker, on every order.
-  revalidatePath("/user/order/[code]/edit", "page");
+  revalidatePath("/user/order/[slug]/edit", "page");
 
-  redirect(`/user/order?created=${order.code}`);
+  redirect(`/user/order?created=${order.code}&slug=${order.slug}`);
 }
