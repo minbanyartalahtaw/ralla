@@ -5,6 +5,7 @@ import { cache } from "react";
 import { BackButton } from "@/components/back-button";
 import { getOrderBySlug } from "@/lib/order-store";
 import { listProductsForOrder } from "@/lib/product-store";
+import { RecordCrumb } from "@/app/user/_components/user-breadcrumb";
 
 import { OrderForm, type OrderFormInitial } from "../../order-form";
 import { updateOrderAction } from "./actions";
@@ -62,6 +63,7 @@ export default async function EditOrderPage({
 
   return (
     <div className="mx-auto max-w-[640px]">
+      <RecordCrumb label={order.code} />
       {/* The heading sits on the back button's row rather than under it: which
           order is being edited is the one thing this page has to say that New
           order doesn't, and stacking it cost a band of empty space above a form

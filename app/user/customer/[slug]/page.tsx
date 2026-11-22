@@ -6,6 +6,7 @@ import { getCustomerBySlug } from "@/lib/customer-store";
 import { listOrdersByCustomer } from "@/lib/order-store";
 import { formatDate, formatKyat, type OrderWithItems } from "@/lib/orders";
 import { BackButton } from "@/components/back-button";
+import { RecordCrumb } from "@/app/user/_components/user-breadcrumb";
 import { AvatarPicker } from "./avatar-picker";
 import { DetailsCard } from "./details-card";
 
@@ -62,6 +63,7 @@ export default async function CustomerDetailPage({
 
   return (
     <div className="mx-auto max-w-[640px]">
+      <RecordCrumb label={customer.code} />
       <BackButton fallback="/user/customer" />
 
       <section className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]">

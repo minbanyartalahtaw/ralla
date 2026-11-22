@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 
 import {
   Breadcrumb,
@@ -35,9 +36,9 @@ const TRAILS = {
 } as const;
 
 /**
- * Detail routes carry a record code in the path, so they can't be listed above
- * — there is a route per record. The code itself is the last crumb: it's the
- * same identifier the page shows, so the trail names the record on screen.
+ * Detail routes carry a record slug in the path, so they can't be listed above
+ * — there is a route per record. The slug is random and never shown, so the
+ * page names its record via <RecordCrumb> (the code staff actually read).
  *
  * Add a row here when you add a detail route.
  */
@@ -58,28 +59,42 @@ const DETAIL_ACTIONS: Record<string, string> = {
 
 const FALLBACK = ["Dashboard"] as const;
 
-function trailFor(pathname: string): readonly string[] {
+type RecordLabel = [string | null, (label: string | null) => void];
+const RecordContext = createContext<RecordLabel>([null, () => {}]);
+
+export function BreadcrumbProvider({ children }: { children: ReactNode }) {
+  return <RecordContext value={useState<string | null>(null)}>{children}</RecordContext>;
+}
+
+/**
+ * Rendered by a detail page to name its record in the trail. Only the page has
+ * the record — the layout above it sees nothing but a slug.
+ */
+export function RecordCrumb({ label }: { label: string }) {
+  const [, setLabel] = use(RecordContext);
+  useEffect(() => {
+    setLabel(label);
+    return () => setLabel(null);
+  }, [label, setLabel]);
+  return null;
+}
+
+function trailFor(pathname: string, record: string | null): readonly string[] {
   const exact = TRAILS[pathname as keyof typeof TRAILS];
   if (exact) return exact;
 
   for (const parent of DETAIL_PARENTS) {
     if (!pathname.startsWith(parent.prefix)) continue;
-    const [code, action, ...rest] = pathname
+    const [slug, action, ...rest] = pathname
       .slice(parent.prefix.length)
       .split("/");
     // The record itself, optionally one named page under it. Anything deeper
     // isn't ours to name.
-    if (!code || rest.length > 0) continue;
+    if (!slug || rest.length > 0) continue;
     if (action !== undefined && !DETAIL_ACTIONS[action]) continue;
 
-    const trail = [
-      parent.label,
-      // Uppercased because codes are stored uppercase and the page prints them
-      // that way. URLs come back lowercased often enough that the raw segment
-      // would show `rl-260809jbi` in the trail above a sheet reading
-      // `RL-260809JBI` — the same record spelled two ways on one screen.
-      decodeURIComponent(code).toUpperCase(),
-    ];
+    // No record crumb until the page names one (first paint, or a 404).
+    const trail = record ? [parent.label, record] : [parent.label];
     return action === undefined ? trail : [...trail, DETAIL_ACTIONS[action]];
   }
 
@@ -88,7 +103,8 @@ function trailFor(pathname: string): readonly string[] {
 
 export function UserBreadcrumb() {
   const pathname = usePathname();
-  const trail = trailFor(pathname);
+  const [record] = use(RecordContext);
+  const trail = trailFor(pathname, record);
 
   return (
     <Breadcrumb>

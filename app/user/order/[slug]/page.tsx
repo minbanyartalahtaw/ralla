@@ -6,6 +6,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { getOrderBySlug } from "@/lib/order-store";
 import { getCustomer } from "@/lib/customer-store";
+import { RecordCrumb } from "@/app/user/_components/user-breadcrumb";
 import {
   DELIVERY_STATUS,
   PAYMENT_METHOD,
@@ -105,6 +106,7 @@ export default async function OrderDetailPage({
 
   return (
     <div className="mx-auto max-w-[640px]">
+      <RecordCrumb label={order.code} />
       {/* No `detailHref` — this *is* the detail page. The order code is the
           dedupe key, so returning here after a second edit toasts again. */}
       <CreatedToast
