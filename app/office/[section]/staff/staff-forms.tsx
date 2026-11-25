@@ -1,11 +1,34 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Alert02Icon } from "@hugeicons/core-free-icons";
+import {
+  Alert02Icon,
+  LockPasswordIcon,
+  MoreHorizontalIcon,
+  UserBlock01Icon,
+  UserCheck01Icon,
+  UserSwitchIcon,
+} from "@hugeicons/core-free-icons";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { Role } from "@/lib/permissions";
 
@@ -86,10 +109,8 @@ export function AddStaffForm() {
   );
 }
 
-/**
- * Reset password, change role, turn off/on — for one account. Hidden for your
- * own row (the server refuses those anyway); use Settings for yourself.
- */
+type Dialog = "password" | "role" | "active" | null;
+
 export function StaffRowActions({
   id,
   name,
@@ -101,6 +122,8 @@ export function StaffRowActions({
   role: Role;
   active: boolean;
 }) {
+  const [open, setOpen] = useState<Dialog>(null);
+  const close = () => setOpen(null);
   const [pwState, pwAction, pwPending] = useActionState(
     resetStaffPasswordAction,
     emptyStaffFormState,
@@ -113,48 +136,145 @@ export function StaffRowActions({
     setStaffActiveAction,
     emptyStaffFormState,
   );
-  const pwRef = useRef<HTMLFormElement>(null);
-  useToast(pwState, () => pwRef.current?.reset());
-  useToast(roleState);
-  useToast(activeState);
+  useToast(pwState, close);
+  useToast(roleState, close);
+  useToast(activeState, close);
+
+  const who = name || "this account";
+  const nextRole = role === "admin" ? "staff" : "admin";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <form ref={pwRef} action={pwAction} className="flex items-center gap-1">
-        <input type="hidden" name="id" value={id} />
-        <Input
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="New password"
-          aria-label={`New password for ${name}`}
-          className="w-32"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Manage ${who}`}
+              className="shrink-0"
+            >
+              Manage
+              <HugeiconsIcon icon={MoreHorizontalIcon} data-icon="inline-end" />
+            </Button>
+          }
         />
-        <Button type="submit" size="sm" variant="secondary" disabled={pwPending}>
-          Reset password
-        </Button>
-      </form>
-      <form action={roleAction}>
-        <input type="hidden" name="id" value={id} />
-        <input type="hidden" name="role" value={role === "admin" ? "staff" : "admin"} />
-        <Button type="submit" size="sm" variant="outline" disabled={rolePending}>
-          {role === "admin" ? "Make staff" : "Make admin"}
-        </Button>
-      </form>
-      <form action={activeAction}>
-        <input type="hidden" name="id" value={id} />
-        <input type="hidden" name="active" value={String(!active)} />
-        {active ? (
-          <Button type="submit" size="sm" variant="destructive" disabled={activePending}>
-            <HugeiconsIcon icon={Alert02Icon} data-icon="inline-start" />
-            Turn off
-          </Button>
-        ) : (
-          <Button type="submit" size="sm" variant="secondary" disabled={activePending}>
-            Turn on
-          </Button>
-        )}
-      </form>
-    </div>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => setOpen("password")}>
+            <HugeiconsIcon icon={LockPasswordIcon} strokeWidth={1.5} />
+            Reset password
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setOpen("role")}>
+            <HugeiconsIcon icon={UserSwitchIcon} strokeWidth={1.5} />
+            {nextRole === "admin" ? "Make admin" : "Make staff"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {active ? (
+            <DropdownMenuItem variant="destructive" onClick={() => setOpen("active")}>
+              <HugeiconsIcon icon={UserBlock01Icon} strokeWidth={1.5} />
+              Turn off account
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => setOpen("active")}>
+              <HugeiconsIcon icon={UserCheck01Icon} strokeWidth={1.5} />
+              Turn on account
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={open === "password"} onOpenChange={(v) => !v && close()}>
+        <AlertDialogContent>
+          <form action={pwAction} className="grid gap-3">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset password for {who}</AlertDialogTitle>
+              <AlertDialogDescription>
+                They will be signed out on every device and use the new password next time.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <input type="hidden" name="id" value={id} />
+            <div>
+              <Label htmlFor={`pw-${id}`}>New password</Label>
+              <Input
+                id={`pw-${id}`}
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                autoFocus
+                required
+                className="h-9"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+              <Button type="submit" disabled={pwPending}>
+                {pwPending ? "Saving…" : "Reset password"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={open === "role"} onOpenChange={(v) => !v && close()}>
+        <AlertDialogContent>
+          <form action={roleAction} className="grid gap-3">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {nextRole === "admin" ? `Make ${who} an admin?` : `Make ${who} staff?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {nextRole === "admin"
+                  ? "Admins can see the dashboard, edit products and customers, restore deleted orders and manage staff."
+                  : "Staff can write and edit orders, and see products and customers. They lose admin pages."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <input type="hidden" name="id" value={id} />
+            <input type="hidden" name="role" value={nextRole} />
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+              <Button type="submit" disabled={rolePending}>
+                {nextRole === "admin" ? "Make admin" : "Make staff"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={open === "active"} onOpenChange={(v) => !v && close()}>
+        <AlertDialogContent>
+          <form action={activeAction} className="grid gap-3">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {active ? `Turn off ${who}?` : `Turn on ${who}?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {active
+                  ? "They are signed out and can't sign in until you turn the account back on. Their orders stay."
+                  : "They can sign in again with their current password."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <input type="hidden" name="id" value={id} />
+            <input type="hidden" name="active" value={String(!active)} />
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+              {active ? (
+                <Button
+                  type="submit"
+                  disabled={activePending}
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                >
+                  <HugeiconsIcon icon={Alert02Icon} data-icon="inline-start" />
+                  Turn off
+                </Button>
+              ) : (
+                <Button type="submit" disabled={activePending}>
+                  Turn on
+                </Button>
+              )}
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
