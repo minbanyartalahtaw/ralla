@@ -71,11 +71,14 @@ No test runner is set up yet.
 app/
   page.tsx            # redirect only — there is no landing page
   globals.css         # all theme tokens
-  login/              # the sign-in form; the one route outside /user
-  user/               # the admin app; /user redirects to /user/dashboard
-    layout.tsx        # sidebar + breadcrumb shell
-    dashboard/ order/ customer/ product/
-    theme/            # theme & component reference — see below
+  login/              # the sign-in form; the one route outside /office
+  office/
+    page.tsx          # redirects to the signed-in role's home
+    [section]/        # the app, once: `admin` or `staff` (see Sections below)
+      layout.tsx      # section check + sidebar + breadcrumb shell
+      _components/    # shell pieces, section.ts / use-section.ts, nav.ts
+      order/ product/ customer/ settings/    # both sections
+      dashboard/ staff/ theme/ order/deleted/ product/new/   # admin section only
 components/ui/        # shadcn components (generated — regenerate, don't hand-write)
 lib/                  # domain (orders, customers) + *-store.ts persistence
 prisma/               # schema, migrations, seed
@@ -83,14 +86,26 @@ docs/                 # runbooks — production-migrations.md before touching pr
 generated/prisma/     # Prisma client — gitignored, made by `prisma generate`
 ```
 
-**There is no landing page.** RALLA has no public face, so `/` only redirects to
-`/user/dashboard` — which `proxy.ts` turns into `/login` for anyone without a session.
+**There is no landing page.** RALLA has no public face, so `/` only redirects to the
+signed-in role's home (`homePathFor()`: admin → `/office/admin/dashboard`, staff →
+`/office/staff/order/new`), or to `/login`.
 
-`/user/theme` is the style guide: every token in `globals.css` rendered once. It is
-**deliberately unlinked** — no nav entry, no button, nothing anywhere points at it, and
-it is reachable only by typing the URL. It lives under `/user` so it still needs a
-session; it is a component gallery, not something a customer or a passer-by should
-find. Keep it that way when adding to the sidebar.
+**Sections.** Every page exists once, under `app/office/[section]/`, and is served at
+both `/office/admin/…` and `/office/staff/…`. Links stay inside the current section:
+server components take `base` from `getSection(params)`, client components from
+`useSection()`, and forms post a hidden `section` that actions read with
+`formSectionBase()` to redirect back. Admin-only pages call `adminSectionOnly()` (a 404
+under `/office/staff`), and links to them always point at `/office/admin`. The section
+is never the security: the layout requires admin for `/office/admin` for navigation's
+sake, but every page and action still checks the role itself. `revalidatePath()` uses
+the pattern (`"/office/[section]/order", "page"`) so both sections refresh. Old `/user/…`
+links redirect (temporary) to `/office/admin/…` in `proxy.ts`.
+
+`/office/admin/theme` is the style guide: every token in `globals.css` rendered once. It
+is **deliberately unlinked** — no nav entry, no button, nothing anywhere points at it,
+and it is reachable only by typing the URL. It needs an admin session; it is a component
+gallery, not something a customer or a passer-by should find. Keep it that way when
+adding to the sidebar.
 
 Prefer colocating route-specific components inside their route folder; promote to a
 shared `components/` directory only once something is used by two or more routes.
@@ -150,7 +165,7 @@ it. See the migration comments for the two-step pattern to reuse when dropping a
 column that production is still writing.
 
 **Detail URLs address a record by its `slug`, not its `code` or `id`.** The slug is
-16 random hex characters (`/user/order/9ad83d01f93c4fae`) from a database default, so a
+16 random hex characters (`/office/admin/order/9ad83d01f93c4fae`) from a database default, so a
 URL can't be guessed: `RLC-` codes are a plain sequence and `RL-` codes are a date plus
 three letters. The code is still what staff see, search and print — it just never goes
 in a URL. Build every link from `.slug`; old `/RL-…` URLs 404 on purpose, because a
@@ -193,7 +208,7 @@ throws `OutOfStockError` and rolls the order back; the action turns that into a 
 error rather than a crash. Stock is checked against the **total per product**, since
 the same product can sit on two lines.
 
-**An order is edited at `/user/order/[code]/edit`**, on the same `OrderForm` the create
+**An order is edited at `order/[slug]/edit`**, on the same `OrderForm` the create
 route uses — one component, so there is no second layout for staff to learn. The route
 supplies the action, the labels and the order's current values. What it may change is
 the snapshot, the lines and the payment method; **not** the status (that moves from the
@@ -249,18 +264,23 @@ case-insensitive match. Passwords are scrypt hashes from `lib/password.ts`
 (`scrypt$<salt>$<hash>`) — never stored or logged in the clear. `active = false`
 switches someone off without deleting them.
 
-Each person changes their own name and password at `/user/settings` (the id comes from
+Each person changes their own name and password at `settings` (the id comes from
 the session, never the form). A password change re-issues the current browser's cookie;
 every other cookie for that person dies on its next request via `pv`.
 
-There is **no sign-up and no staff-management UI yet**. The only way to make an account
-is `npm run admin:create` (prompts for name, username and password; or `ADMIN_NAME_INIT` / `ADMIN_USERNAME_INIT` / `ADMIN_PASSWORD_INIT`),
-which creates the **first admin and refuses to run once any admin exists** — it can't
-add a second admin, add `staff`, or reset a password. Creating `staff` accounts is meant
-to happen in the UI, which is the next step. Today the role is recorded but not displayed,
-and `requireAdmin()` exists, but nothing calls it: `staff` and `admin` can do
-the same things. `OrderStatusEvent.changedBy` is still written empty even though the
-session now knows who it is.
+There is **no sign-up**. Admins manage accounts at `/office/admin/staff`: add (role defaults to
+`staff`), reset someone's password (signs them out everywhere), make admin/staff, turn
+off/on. The server refuses an admin turning off or demoting **themself**, and refuses
+anything that would leave **no active admin** — `guardLastAdmin()` locks every active
+admin row so two admins demoting each other at once can't both pass. The very first
+admin still comes from `npm run admin:create` (prompts for name, username and password; or `ADMIN_NAME_INIT` / `ADMIN_USERNAME_INIT` / `ADMIN_PASSWORD_INIT`),
+which refuses once any admin exists. `npm run staff:create` is a dev-only shortcut that
+refuses a production `DATABASE_URL`. What each role may do is the table in `lib/permissions.ts`, enforced by
+`requireAbility()` at the top of every Server Action and admin-only page (rules and
+roadmap: `docs/role.md`). Every order write takes the signed-in
+person as `actor` and logs to `order_changes` in the same transaction (one row per
+changed field; `staffName` is a snapshot). Orders are soft-deleted (`deletedAt`):
+every read in `lib/order-store.ts` filters them out, and delete/restore move no stock.
 
 A wrong username, a wrong password and a deactivated account give the **same** message,
 and the login always runs one scrypt verification (against `DUMMY_HASH` when the
@@ -281,26 +301,29 @@ current one, not the cookie's.
 Two layers guard the app, and they are not redundant:
 
 - `proxy.ts` (Next 16's rename of `middleware.ts` — the exported function must be
-  called `proxy`) redirects `/user/*` to `/login` when the cookie doesn't verify, and
-  bounces a signed-in browser off `/login`. It reads only the cookie, never the
+  called `proxy`) redirects `/office/*` to `/login` when the cookie doesn't verify,
+  sends a staff cookie off `/office/admin/*` to its home, and bounces a signed-in
+  browser off `/login`. It reads only the cookie, never the
   database: it runs on every matched request, prefetches included.
-- `requireSession()` from `lib/auth.ts` runs at the top of **every** Server Action. A
+- `requireAbility()` / `requireSession()` from `lib/auth.ts` run at the top of **every**
+  Server Action. A
   Server Action is an ordinary POST, so this is what refuses one that never navigated
   through the proxy. `searchCustomersAction` is the sharp case — it returns phone
-  numbers and addresses. It checks the database, and clears a stale cookie before
-  redirecting (a Server Action may delete cookies; a render may not).
+  numbers and addresses. It checks the database, and sends a stale cookie to `/login/expired`
+  to be cleared (a render can't delete a cookie, and pages call it too).
 - Because the proxy can't see the database, a cookie that verifies but belongs to a
-  removed/deactivated person would loop `/user` → `/login` → `/user`. `app/user/layout.tsx`
+  removed/deactivated person would loop `/office` → `/login` → `/office`. The section layout
   breaks it by redirecting to `/login/expired`, a route handler that deletes the cookie.
 
-`?next=` always goes through `safeNextPath()`, which allows only paths inside `/user`.
+`?next=` always goes through `safeNextPath()`, which allows only paths inside `/office`
+(and sign-in sends a staff member's `/office/admin` link to their home instead).
 `//evil.example` starts with `/` and would sail past a naive prefix test.
 
 Login is throttled in memory, 8 attempts per 10 minutes per IP. It resets on deploy and
 a forged `x-forwarded-for` gets a fresh bucket, so move it to Postgres if this ever
 faces the open internet.
 
-`/` only redirects. Everything real lives under `/user`.
+`/` only redirects. Everything real lives under `/office`.
 
 ## Conventions
 
