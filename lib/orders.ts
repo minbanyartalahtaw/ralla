@@ -13,6 +13,7 @@ import type {
   OrderModel,
   OrderItemModel,
   OrderStatusEventModel,
+  OrderChangeModel,
 } from "@/generated/prisma/models";
 
 export { DeliveryStatus, PaymentMethod };
@@ -21,6 +22,7 @@ export { DeliveryStatus, PaymentMethod };
 export type Order = OrderModel;
 export type OrderItem = OrderItemModel;
 export type OrderStatusEvent = OrderStatusEventModel;
+export type OrderChange = OrderChangeModel;
 
 /** An order with its lines, which is how the UI always wants it. */
 export type OrderWithItems = Order & { items: OrderItem[] };

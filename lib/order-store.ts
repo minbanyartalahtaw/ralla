@@ -4,13 +4,18 @@
  * Server-only — never import this from a Client Component.
  */
 
+import type { OrderChangeAction, Prisma } from "@/generated/prisma/client";
 import { generateOrderCode } from "@/lib/order-code";
 import { prisma } from "@/lib/prisma";
 import {
   DELIVERY_STATUS_KEYS,
+  PAYMENT_METHOD,
   formatDate,
+  formatKyat,
   itemsTotal,
   type DeliveryStatus,
+  type Order,
+  type OrderChange,
   type OrderDetail,
   type OrderWithItems,
   type LabelledCount,
@@ -36,6 +41,38 @@ export class OutOfStockError extends Error {
     );
     this.name = "OutOfStockError";
   }
+}
+
+/**
+ * The signed-in person a change is recorded against. A `Staff` row fits. Always
+ * from the session, never from a form.
+ */
+export type Actor = { id: number; name: string };
+
+/** One OrderChange row's data, minus the order it hangs off. */
+function changeRow(
+  actor: Actor,
+  action: OrderChangeAction,
+  field = "",
+  oldValue = "",
+  newValue = "",
+) {
+  return { staffId: actor.id, staffName: actor.name, action, field, oldValue, newValue };
+}
+
+/**
+ * Locks a live (not deleted) order for the rest of the transaction and returns
+ * the fields a change row needs the old value of. Throws when it is gone or
+ * deleted, so nothing can be written to an order that isn't on any list.
+ */
+async function lockLiveOrder(tx: Prisma.TransactionClient, id: number) {
+  const [row] = await tx.$queryRaw<{ status: DeliveryStatus; note: string }[]>`
+    SELECT "status", "note" FROM "orders"
+    WHERE "id" = ${id} AND "deleted_at" IS NULL
+    FOR UPDATE
+  `;
+  if (!row) throw new Error("That order no longer exists.");
+  return row;
 }
 
 /** Postgres unique-constraint violation, as surfaced by Prisma. */
@@ -110,6 +147,7 @@ function orderWhere({ query, status }: OrderFilter) {
   const code = normalizeOrderQuery(query);
 
   return {
+    deletedAt: null,
     ...(code === "" ? {} : { code: { contains: code, mode: "insensitive" as const } }),
     ...(status ? { status } : {}),
   };
@@ -229,7 +267,7 @@ export async function listOrdersByCustomer(
   customerId: number,
 ): Promise<OrderWithItems[]> {
   return prisma.order.findMany({
-    where: { customerId },
+    where: { customerId, deletedAt: null },
     include: { items: true },
     orderBy: { placedAt: "desc" },
   });
@@ -261,10 +299,10 @@ const MIN_TREND_DAYS = 7;
  * would slope the line straight through a quiet week and overstate it.
  *
  * Cancelled orders are excluded — they were voided before dispatch, so no money
- * moved.
+ * moved. Deleted ones too, like every read here.
  */
 export async function revenueByDay(maxDays = 30): Promise<RevenueDay[]> {
-  const notCancelled = { status: { not: "cancelled" } } as const;
+  const notCancelled = { status: { not: "cancelled" }, deletedAt: null } as const;
 
   const first = await prisma.order.findFirst({
     where: notCancelled,
@@ -346,7 +384,11 @@ export async function salesOnDay(
   const end = new Date(start.getTime() + 86_400_000);
 
   const result = await prisma.order.aggregate({
-    where: { placedAt: { gte: start, lt: end }, status: { not: "cancelled" } },
+    where: {
+      placedAt: { gte: start, lt: end },
+      status: { not: "cancelled" },
+      deletedAt: null,
+    },
     _count: { _all: true },
     _sum: { total: true },
   });
@@ -369,7 +411,7 @@ export async function salesOnDay(
 export async function topProductsByUnits(limit = 6): Promise<LabelledCount[]> {
   const rows = await prisma.orderItem.groupBy({
     by: ["productId"],
-    where: { order: { status: { not: "cancelled" } } },
+    where: { order: { status: { not: "cancelled" }, deletedAt: null } },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
     take: limit,
@@ -408,7 +450,7 @@ export async function topProductsByUnits(limit = 6): Promise<LabelledCount[]> {
 export async function ordersByCity(): Promise<LabelledCount[]> {
   const rows = await prisma.order.groupBy({
     by: ["city"],
-    where: { status: { not: "cancelled" } },
+    where: { status: { not: "cancelled" }, deletedAt: null },
     _count: { _all: true },
     orderBy: { _count: { city: "desc" } },
   });
@@ -416,9 +458,10 @@ export async function ordersByCity(): Promise<LabelledCount[]> {
   return rows.map((row) => ({ label: row.city, value: row._count._all }));
 }
 
+/** A live order by id. Null when it doesn't exist or was deleted. */
 export async function getOrder(id: number): Promise<OrderWithItems | null> {
   return prisma.order.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     include: { items: true },
   });
 }
@@ -432,12 +475,14 @@ export async function getOrder(id: number): Promise<OrderWithItems | null> {
  * the list already shows where an order *is*, only this page says how it got
  * there. Newest first, so the current status is the one staff see without
  * scrolling.
+ *
+ * A deleted order is null, the same as a missing one: its page 404s.
  */
 export async function getOrderBySlug(
   slug: string,
 ): Promise<OrderDetail | null> {
   return prisma.order.findUnique({
-    where: { slug: slug.trim().toLowerCase() },
+    where: { slug: slug.trim().toLowerCase(), deletedAt: null },
     include: {
       items: true,
       statusEvents: { orderBy: { changedAt: "desc" } },
@@ -478,7 +523,10 @@ function stockMovements(lines: NewOrderLine[]): Map<number, number> {
  * form and the action both check first, but only this check is safe against two
  * staff saving the last unit at the same moment.
  */
-export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
+export async function createOrder(
+  input: NewOrder,
+  actor: Actor,
+): Promise<OrderWithItems> {
   if (input.lines.length === 0) {
     throw new Error("An order needs at least one line item.");
   }
@@ -503,6 +551,7 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
             status: "pending",
             notifyBySms: input.notifyBySms,
             note: input.note,
+            createdById: actor.id,
             items: {
               create: input.lines.map((line) => ({
                 productId: line.productId,
@@ -513,8 +562,9 @@ export async function createOrder(input: NewOrder): Promise<OrderWithItems> {
               })),
             },
             statusEvents: {
-              create: [{ status: "pending", changedBy: "system" }],
+              create: [{ status: "pending", changedBy: actor.name }],
             },
+            changes: { create: [changeRow(actor, "created")] },
           },
           include: { items: true },
         });
@@ -601,8 +651,8 @@ export type OrderEdit = {
  * Stock moves by the *difference*, per product, in the same transaction. This
  * is the one place units go back on the shelf — an edit that drops a line
  * typed as 10 instead of 1 must return the nine, or a typo would eat stock
- * permanently. (Cancelling an order still restores nothing; that is a separate
- * decision, and cancelled orders are not deleted.)
+ * permanently. (Cancelling or deleting an order restores nothing; the owner
+ * decided both, and staff correct the shelf count by hand.)
  *
  * Throws OutOfStockError when the edit asks for more units than are there. Only
  * the increase is guarded, and only against the locked row: the units the order
@@ -612,6 +662,7 @@ export type OrderEdit = {
 export async function updateOrder(
   id: number,
   input: OrderEdit,
+  actor: Actor,
 ): Promise<OrderWithItems> {
   if (input.lines.length === 0) {
     throw new Error("An order needs at least one line item.");
@@ -628,13 +679,15 @@ export async function updateOrder(
     // actually stored. The lock is held to the end of the transaction; the
     // per-product UPDATEs below guard a different race — two *different*
     // orders reaching for the same last unit.
-    await tx.$queryRaw`SELECT "id" FROM "orders" WHERE "id" = ${id} FOR UPDATE`;
+    await lockLiveOrder(tx, id);
 
     const existing = await tx.order.findUnique({
       where: { id },
       include: { items: true },
     });
     if (!existing) throw new Error("That order no longer exists.");
+
+    const changes = editChanges(existing, input, total);
 
     // Read inside the transaction, not from what the form was rendered with:
     // this is what the order actually holds right now, and it is the number the
@@ -669,6 +722,12 @@ export async function updateOrder(
             unitPrice: line.unitPrice,
             quantity: line.quantity,
           })),
+        },
+        // A save that changed nothing logs nothing.
+        changes: {
+          create: changes.map((c) =>
+            changeRow(actor, "updated", c.field, c.oldValue, c.newValue),
+          ),
         },
       },
       include: { items: true },
@@ -733,16 +792,25 @@ export async function updateOrder(
 /**
  * Overwrites the order's free-text note. Unlike the status history, this is a
  * single mutable field — the point is "what does staff need to know right
- * now", not a log of every edit.
+ * now" — but the change log keeps the old text.
  */
 export async function updateOrderNote(
   id: number,
   note: string,
+  actor: Actor,
 ): Promise<OrderWithItems> {
-  return prisma.order.update({
-    where: { id },
-    data: { note },
-    include: { items: true },
+  return prisma.$transaction(async (tx) => {
+    const before = await lockLiveOrder(tx, id);
+    return tx.order.update({
+      where: { id },
+      data: {
+        note,
+        ...(before.note === note
+          ? {}
+          : { changes: { create: [changeRow(actor, "note", "note", before.note, note)] } }),
+      },
+      include: { items: true },
+    });
   });
 }
 
@@ -750,15 +818,134 @@ export async function updateOrderNote(
 export async function updateOrderStatus(
   id: number,
   status: DeliveryStatus,
-  changedBy = "",
-  note = "",
+  actor: Actor,
 ): Promise<OrderWithItems> {
-  return prisma.order.update({
-    where: { id },
-    data: {
-      status,
-      statusEvents: { create: [{ status, changedBy, note }] },
-    },
-    include: { items: true },
+  return prisma.$transaction(async (tx) => {
+    const before = await lockLiveOrder(tx, id);
+    return tx.order.update({
+      where: { id },
+      data: {
+        status,
+        statusEvents: { create: [{ status, changedBy: actor.name }] },
+        changes: {
+          create: [changeRow(actor, "status", "status", before.status, status)],
+        },
+      },
+      include: { items: true },
+    });
   });
+}
+
+/**
+ * Hides an order from every list, count and total. The row and its lines stay,
+ * so an admin can bring it back with restoreOrder().
+ *
+ * Stock is not touched, the same as cancelling: the owner decided a deleted
+ * order puts nothing back on the shelf (docs/role.md, Phase 2, option B).
+ */
+export async function softDeleteOrder(id: number, actor: Actor): Promise<Order> {
+  return prisma.$transaction(async (tx) => {
+    await lockLiveOrder(tx, id);
+    return tx.order.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        deletedById: actor.id,
+        changes: { create: [changeRow(actor, "deleted")] },
+      },
+    });
+  });
+}
+
+/**
+ * Brings a deleted order back. Takes nothing off the shelf, because deleting
+ * put nothing back — doing one without the other would count the units twice.
+ */
+export async function restoreOrder(id: number, actor: Actor): Promise<Order> {
+  return prisma.$transaction(async (tx) => {
+    const [row] = await tx.$queryRaw<{ id: number }[]>`
+      SELECT "id" FROM "orders"
+      WHERE "id" = ${id} AND "deleted_at" IS NOT NULL
+      FOR UPDATE
+    `;
+    if (!row) throw new Error("That order isn't deleted.");
+    return tx.order.update({
+      where: { id },
+      data: {
+        deletedAt: null,
+        deletedById: null,
+        changes: { create: [changeRow(actor, "restored")] },
+      },
+    });
+  });
+}
+
+/** An order's change log, newest first. Empty for orders from before tracking. */
+export async function listOrderChanges(orderId: number): Promise<OrderChange[]> {
+  return prisma.orderChange.findMany({
+    where: { orderId },
+    orderBy: [{ changedAt: "desc" }, { id: "desc" }],
+  });
+}
+
+export type DeletedOrder = OrderWithItems & { deletedBy: { name: string } | null };
+
+/** Deleted orders, most recently deleted first. Admin only — see restoreOrder(). */
+export async function listDeletedOrders(): Promise<DeletedOrder[]> {
+  return prisma.order.findMany({
+    where: { deletedAt: { not: null } },
+    include: { items: true, deletedBy: { select: { name: true } } },
+    orderBy: [{ deletedAt: "desc" }, { id: "desc" }],
+  });
+}
+
+/** A line's identity for comparing two versions of an order: product, or name. */
+function lineSummary(lines: { productId: number | null; name: string; quantity: number }[]) {
+  const byKey = new Map<string, { name: string; quantity: number }>();
+  for (const line of lines) {
+    const key = line.productId === null ? `name:${line.name}` : `product:${line.productId}`;
+    const entry = byKey.get(key);
+    if (entry) entry.quantity += line.quantity;
+    else byKey.set(key, { name: line.name, quantity: line.quantity });
+  }
+  return byKey;
+}
+
+/**
+ * What an edit changed, one entry per field, in words staff can read:
+ * `Lip tint × 2` → `Lip tint × 3`. An added line has no old value, a removed
+ * one no new value. Total is listed too, since a re-priced line changes it
+ * without changing any quantity.
+ */
+function editChanges(existing: OrderWithItems, input: OrderEdit, total: number) {
+  const rows: { field: string; oldValue: string; newValue: string }[] = [];
+  const fields: [string, string, string][] = [
+    ["customer", existing.customerName, input.customerName],
+    ["phone", existing.phone, input.phone],
+    ["city", existing.city, input.city],
+    ["address", existing.address, input.address],
+    ["payment", PAYMENT_METHOD[existing.paymentMethod], PAYMENT_METHOD[input.paymentMethod]],
+    ["note", existing.note, input.note],
+  ];
+  for (const [field, oldValue, newValue] of fields) {
+    if (oldValue !== newValue) rows.push({ field, oldValue, newValue });
+  }
+
+  const before = lineSummary(existing.items);
+  const after = lineSummary(input.lines);
+  for (const key of new Set([...before.keys(), ...after.keys()])) {
+    const a = before.get(key);
+    const b = after.get(key);
+    if (a?.quantity === b?.quantity) continue;
+    rows.push({
+      field: "items",
+      oldValue: a ? `${a.name} × ${a.quantity}` : "",
+      newValue: b ? `${b.name} × ${b.quantity}` : "",
+    });
+  }
+
+  if (existing.total !== total) {
+    rows.push({ field: "total", oldValue: formatKyat(existing.total), newValue: formatKyat(total) });
+  }
+  return rows;
 }

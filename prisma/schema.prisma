@@ -40,10 +40,20 @@ enum PaymentMethod {
 }
 
 /// What a signed-in person may do. Only the label is stored here; what each
-/// role is allowed to do is decided in code (see requireAdmin() in lib/auth.ts).
+/// role is allowed to do is decided in code (see lib/permissions.ts).
 enum StaffRole {
   staff
   admin
+}
+
+/// Kinds of entry in an order's change log (OrderChange).
+enum OrderChangeAction {
+  created
+  updated
+  status
+  note
+  deleted
+  restored
 }
 
 /// Someone who buys from the shop.
@@ -115,10 +125,23 @@ model Order {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  /// Who wrote the order. Null for orders from before tracking, and once that
+  /// account is deleted — OrderChange keeps the name either way.
+  createdById Int?   @map("created_by_id")
+  createdBy   Staff? @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// Soft delete: set, the order is gone from every list, count and total, but
+  /// the row stays so an admin can restore it. Null means live.
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+  deletedById Int?      @map("deleted_by_id")
+  deletedBy   Staff?    @relation("OrderDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
   items        OrderItem[]
   statusEvents OrderStatusEvent[]
+  changes      OrderChange[]
 
   @@index([customerId])
+  @@index([deletedAt])
   @@index([status])
   @@index([placedAt(sort: Desc)])
   @@map("orders")
@@ -183,13 +206,39 @@ model OrderStatusEvent {
 
   status    DeliveryStatus
   note      String         @default("")
-  /// Admin who made the change. Free text until auth exists.
+  /// Name of the staff member who made the change. Empty on rows from before
+  /// tracking; "system" on the first event of those older orders.
   changedBy String         @default("") @map("changed_by")
 
   changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
 
   @@index([orderId, changedAt])
   @@map("order_status_events")
+}
+
+/// Append-only log of every change to an order: who, when, and what.
+///
+/// `staffName` is a snapshot, like an order's address: renaming or removing the
+/// account must not rewrite who did what. One row per changed field on an edit.
+model OrderChange {
+  id      Int   @id @default(autoincrement())
+  orderId Int   @map("order_id")
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  staffId   Int?   @map("staff_id")
+  staff     Staff? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  staffName String @map("staff_name")
+
+  action   OrderChangeAction
+  /// What changed on an `updated` row — `address`, `items`, `total`, …
+  field    String            @default("")
+  oldValue String            @default("") @map("old_value")
+  newValue String            @default("") @map("new_value")
+
+  changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
+
+  @@index([orderId, changedAt])
+  @@map("order_changes")
 }
 
 /// A person who can sign in to the admin app. Replaces the shared
@@ -211,6 +260,10 @@ model Staff {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  ordersCreated Order[]       @relation("OrderCreatedBy")
+  ordersDeleted Order[]       @relation("OrderDeletedBy")
+  orderChanges  OrderChange[]
 
   @@map("staff")
 }
