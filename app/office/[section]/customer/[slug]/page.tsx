@@ -61,7 +61,7 @@ export default async function CustomerDetailPage({
   const { slug } = await params;
   // The full screen needs both the admin section and the right to edit. Staff —
   // and an admin looking at the staff section — get the read-only one, which
-  // also leaves out what the customer has spent in total.
+  // also leaves out the order count, spend and last-order stats.
   const staff = await getCurrentStaff();
   const editable = section === "admin" && staff !== null && can(staff, "manageCustomers");
   const customer = await loadCustomer(slug);
@@ -78,17 +78,31 @@ export default async function CustomerDetailPage({
       <RecordCrumb label={customer.code} />
       <BackButton fallback={`${base}/customer`} />
 
-      <section className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center gap-4 px-5 py-6 sm:gap-5 sm:px-8 sm:py-7">
+      <section
+        className={
+          editable
+            ? "mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
+            : "mt-3"
+        }
+      >
+        {/* Read-only: a centred profile — photo, then name and code — with no
+            stats; the order count and dates are admin's view. */}
+        <div
+          className={
+            editable
+              ? "flex items-center gap-4 px-5 py-6 sm:gap-5 sm:px-8 sm:py-7"
+              : "flex flex-col items-center gap-3 px-5 py-7 text-center sm:px-8"
+          }
+        >
           {editable ? (
             <AvatarPicker customer={customer} />
           ) : (
             <CustomerAvatar
               customer={customer}
-              className="size-14 shrink-0 text-[15px] shadow-sm ring-2 ring-border/50"
+              className="size-16 shrink-0 text-[17px] shadow-sm ring-2 ring-border/50"
             />
           )}
-          <div className="min-w-0 flex-1">
+          <div className={editable ? "min-w-0 flex-1" : "w-full min-w-0"}>
             <h1 className="truncate text-[17px] font-semibold tracking-tight text-foreground sm:text-lg">
               {customer.name}
             </h1>
@@ -102,16 +116,16 @@ export default async function CustomerDetailPage({
 
         {/* Three across even on a phone — the values are short, and stacking
             them would push the one number staff came for below the fold. */}
-        <dl
-          className={`grid divide-x divide-border border-t bg-muted/20 ${editable ? "grid-cols-3" : "grid-cols-2"}`}
-        >
-          <Stat title="Orders" value={String(counted.length)} />
-          {editable ? <Stat title="Spent" value={formatKyat(totalSpent)} /> : null}
-          <Stat
-            title="Last order"
-            value={lastOrder ? formatDate(lastOrder.placedAt) : "—"}
-          />
-        </dl>
+        {editable ? (
+          <dl className="grid grid-cols-3 divide-x divide-border border-t bg-muted/20">
+            <Stat title="Orders" value={String(counted.length)} />
+            <Stat title="Spent" value={formatKyat(totalSpent)} />
+            <Stat
+              title="Last order"
+              value={lastOrder ? formatDate(lastOrder.placedAt) : "—"}
+            />
+          </dl>
+        ) : null}
       </section>
 
       <DetailsCard customer={customer} readOnly={!editable} />
