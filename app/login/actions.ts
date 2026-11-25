@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { clearSession, createSession, safeNextPath } from "@/lib/auth";
 import { DUMMY_HASH, verifyPassword } from "@/lib/password";
+import { homePathFor } from "@/lib/permissions";
 import { findStaffByUsername } from "@/lib/staff-store";
 import type { LoginState } from "./state";
 
@@ -82,7 +83,11 @@ export async function signInAction(
 
   // Outside any try/catch — redirect() signals by throwing, and swallowing it
   // would leave the browser sitting on the login form with a live session.
-  redirect(next);
+  // A staff member's link into the admin section would only bounce, so it
+  // goes straight to their home instead.
+  const allowed =
+    next !== null && (staff.role === "admin" || !/^\/office\/admin(\/|\?|$)/.test(next));
+  redirect(allowed ? next : homePathFor(staff.role));
 }
 
 export async function signOutAction(): Promise<void> {

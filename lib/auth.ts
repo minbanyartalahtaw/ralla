@@ -16,10 +16,8 @@ import {
   passwordVersion,
   readSessionToken,
 } from "@/lib/session";
+import { can, homePathFor, type Ability } from "@/lib/permissions";
 import { getStaff, type Staff } from "@/lib/staff-store";
-
-/** Where to land when there's nothing better to go back to. */
-export const AFTER_LOGIN = "/user/dashboard";
 
 /**
  * Writes the session cookie. Server Actions and Route Handlers only — nothing
@@ -68,7 +66,7 @@ export const getCurrentStaff = cache(async (): Promise<Staff | null> => {
  * Guards an admin Server Action. Call it before reading the form, and before
  * touching the database.
  *
- * `proxy.ts` keeps an unauthenticated browser off `/user/*`, but that only
+ * `proxy.ts` keeps an unauthenticated browser off `/office/*`, but that only
  * guards *navigation*. A Server Action is an ordinary POST to a route the
  * proxy has already let through, so anyone holding an action id can invoke one
  * without ever loading the page it belongs to. This is the check that actually
@@ -78,36 +76,48 @@ export const getCurrentStaff = cache(async (): Promise<Staff | null> => {
  * was open sends the user to the login page instead of an error screen; an
  * attacker gets the same redirect and no data either way.
  *
- * A cookie that verifies but whose person is gone is cleared on the way out;
- * otherwise `proxy.ts` (which only reads the cookie) would bounce them straight
- * back off /login.
+ * A cookie that verifies but whose person is gone must be cleared on the way
+ * out, or `proxy.ts` (which only reads the cookie) would bounce them straight
+ * back off /login. `/login/expired` does that, and unlike `clearSession()` it
+ * works from a page render as well as an action — pages call this too.
  */
 export async function requireSession(): Promise<Staff> {
   const staff = await getCurrentStaff();
-  if (!staff) {
-    await clearSession();
-    redirect("/login");
-  }
+  if (!staff) redirect("/login/expired");
+  return staff;
+}
+
+/**
+ * `requireSession()` plus a role rule from `lib/permissions.ts`. Someone who
+ * lacks the ability is sent to their own home — never the dashboard, which is
+ * itself admin-only and would loop.
+ */
+export async function requireAbility(ability: Ability): Promise<Staff> {
+  const staff = await requireSession();
+  if (!can(staff, ability)) redirect(homePathFor(staff.role));
   return staff;
 }
 
 /** `requireSession()` for actions only an admin may run. */
 export async function requireAdmin(): Promise<Staff> {
   const staff = await requireSession();
-  if (staff.role !== "admin") redirect(AFTER_LOGIN);
+  if (staff.role !== "admin") redirect(homePathFor(staff.role));
   return staff;
 }
 
 /**
  * Sanitizes a `?next=` value into somewhere it is safe to send a browser.
  *
- * Only paths inside `/user` are allowed. Anything else — an absolute URL, a
+ * Only paths inside `/office` are allowed. Anything else — an absolute URL, a
  * protocol-relative `//evil.example` (which starts with `/` and would sail
- * past a naive prefix test), a path in another section — falls back to the
- * dashboard, so a crafted login link can't bounce someone off-site with the
- * app's own domain in the address bar.
+ * past a naive prefix test), a path in another section — gives null, so a
+ * crafted login link can't bounce someone off-site with the app's own domain
+ * in the address bar. On null, sign-in sends the person to `homePathFor(role)`.
+ *
+ * Sign-in sends a staff member's path into the admin section to their home
+ * instead; anything else a role may not open is refused by that page.
  */
-export function safeNextPath(next: string | undefined): string {
-  if (!next) return AFTER_LOGIN;
-  return /^\/user(\/|\?|$)/.test(next) ? next : AFTER_LOGIN;
+export function safeNextPath(next: string | undefined): string | null {
+  if (!next) return null;
+  return /^\/office(\/|\?|$)/.test(next) ? next : null;
 }

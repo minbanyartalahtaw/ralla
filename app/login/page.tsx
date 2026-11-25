@@ -43,7 +43,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             Sign in to manage orders and deliveries.
           </p>
           <div className="mt-8">
-            <LoginForm next={target} />
+            <LoginForm next={target ?? ""} />
           </div>
           <p className="mt-8 flex items-center gap-2 text-xs text-muted-foreground">
             <HugeiconsIcon icon={SquareLock02Icon} size={14} strokeWidth={1.8} />

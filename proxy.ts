@@ -10,23 +10,37 @@
  * including prefetches. It keeps an unauthenticated browser from opening an
  * admin page. It is NOT the security boundary for the data — Server Actions are
  * reachable by direct POST without ever passing a navigation through here, so
- * each one calls `requireSession()` itself. See `lib/auth.ts`.
+ * each one calls `requireAbility()` itself. See `lib/auth.ts`.
+ *
+ * The role in the cookie is only the role at sign-in, so the staff → admin
+ * bounce below is a convenience. The section layout, each page and each action
+ * check the current role from the database.
  */
 
 import { NextResponse, type NextRequest } from "next/server";
 
-import { AFTER_LOGIN } from "@/lib/auth";
+import { homePathFor } from "@/lib/permissions";
 import { SESSION_COOKIE, readSessionToken } from "@/lib/session";
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const signedIn = readSessionToken(token) !== null;
 
-  if (!signedIn && pathname.startsWith("/user")) {
+  // The app moved from /user to /office/admin. Old bookmarks keep working;
+  // temporary, so the target can still change. A staff cookie is then sent on
+  // to the staff section by the check below, on the next request.
+  if (pathname === "/user" || pathname.startsWith("/user/")) {
+    return NextResponse.redirect(
+      new URL(`/office/admin${pathname.slice("/user".length)}${search}`, request.nextUrl),
+    );
+  }
+
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const session = readSessionToken(token);
+
+  if (!session && pathname.startsWith("/office")) {
     const login = new URL("/login", request.nextUrl);
     // Carry the destination so a bookmarked order lands on that order after
-    // signing in, rather than dumping everyone on the dashboard. Read back
+    // signing in, rather than dumping everyone on their home page. Read back
     // through safeNextPath(), which is what stops it being an open redirect.
     login.searchParams.set("next", `${pathname}${search}`);
 
@@ -37,15 +51,22 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  if (signedIn && pathname === "/login") {
-    return NextResponse.redirect(new URL(AFTER_LOGIN, request.nextUrl));
+  if (
+    session?.role === "staff" &&
+    (pathname === "/office/admin" || pathname.startsWith("/office/admin/"))
+  ) {
+    return NextResponse.redirect(new URL(homePathFor("staff"), request.nextUrl));
+  }
+
+  if (session && pathname === "/login") {
+    return NextResponse.redirect(new URL(homePathFor(session.role), request.nextUrl));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  // `/user` is listed alongside `/user/:path*` rather than relying on `*` to
-  // match zero segments, which is ambiguous at the section root.
-  matcher: ["/user", "/user/:path*", "/login"],
+  // Section roots are listed alongside `/:path*` rather than relying on `*` to
+  // match zero segments, which is ambiguous at a root. `/user` only redirects.
+  matcher: ["/office", "/office/:path*", "/user", "/user/:path*", "/login"],
 };

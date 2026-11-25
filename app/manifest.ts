@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "RALLA — Order & Delivery Admin",
     short_name: "RALLA",
     description: "Internal admin for tracking RALLA orders and delivery status.",
-    start_url: "/user/dashboard",
+    start_url: "/",
     display: "standalone",
     background_color: "#fbf8f9",
     theme_color: "#a53860",
