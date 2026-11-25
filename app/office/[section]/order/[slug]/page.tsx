@@ -528,9 +528,12 @@ export default async function OrderDetailPage({
       </section>
 
       {can(staff, "deleteOrders") ? (
-        <div className="mt-8 flex justify-end">
-          <DeleteOrder orderId={order.id} code={order.code} />
-        </div>
+        <section className="mt-8">
+          <h2 className={label}>Danger zone</h2>
+          <div className="mt-3">
+            <DeleteOrder orderId={order.id} code={order.code} />
+          </div>
+        </section>
       ) : null}
     </div>
   );

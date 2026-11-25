@@ -39,11 +39,10 @@ export default async function DeletedOrdersPage({
   return (
     <div>
       <h1 className="sr-only">Deleted orders</h1>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <BackButton fallback="/office/admin/order" />
-        <p className="text-xs text-muted-foreground">
-          {orders.length} deleted {orders.length === 1 ? "order" : "orders"} · hidden from every
-          list, count and total until restored
+        <p className="numeric text-xs text-muted-foreground">
+          {orders.length} deleted
         </p>
       </div>
 
