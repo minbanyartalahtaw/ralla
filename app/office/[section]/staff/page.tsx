@@ -75,7 +75,9 @@ export default async function StaffPage({ params }: PageProps<"/office/[section]
                   </span>
                 </div>
                 <div className="flex w-24 shrink-0 justify-end">
-                  {person.id === me.id ? null : (
+                  {/* No actions on your own row (Settings) or on another admin's —
+                      the server refuses both anyway. */}
+                  {person.role === "admin" ? null : (
                     <StaffRowActions
                       id={person.id}
                       name={person.name}

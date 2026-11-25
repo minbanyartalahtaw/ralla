@@ -270,7 +270,9 @@ every other cookie for that person dies on its next request via `pv`.
 
 There is **no sign-up**. Admins manage accounts at `/office/admin/staff`: add (role defaults to
 `staff`), reset someone's password (signs them out everywhere), make admin/staff, turn
-off/on. The server refuses an admin turning off or demoting **themself**, and refuses
+off/on. The server refuses an admin turning off or demoting **themself**, refuses any
+change to **another admin's** account (reset, role, off/on — so making someone admin
+can only be undone in the database), and refuses
 anything that would leave **no active admin** — `guardLastAdmin()` locks every active
 admin row so two admins demoting each other at once can't both pass. The very first
 admin still comes from `npm run admin:create` (prompts for name, username and password; or `ADMIN_NAME_INIT` / `ADMIN_USERNAME_INIT` / `ADMIN_PASSWORD_INIT`),

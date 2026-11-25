@@ -16,6 +16,7 @@
 - [x] Phase 4 — Move routes to `/office/admin` and `/office/staff`
 - [x] Phase 5 — Staff screens and sidebar (open: inline "add new customer" on the order form needs a server change — see Phase 5)
 - [x] Phase 6 — Full test as admin and as staff (open: inline add-customer, phone width)
+- [x] Phase 3b — Admins cannot manage other admins (added 2026-11-25)
 - [ ] Phase 7 — "Push to main": update production schema (no data loss), then deploy
 
 ---
@@ -56,7 +57,8 @@ What already exists (do not rebuild it):
 | Customers: list and detail | ✓ full screen | ✓ separate read-only screen |
 | Customers: add new (while writing an order) | ✓ | ✓ |
 | Customers: edit details, change avatar | ✓ | — |
-| Staff accounts: create, reset password, turn off | ✓ | — |
+| Staff accounts: create, reset password, turn off | ✓ (staff accounts only, see Phase 3b) | — |
+| Other **admin** accounts: reset password, turn off, change role | — (nobody, see Phase 3b) | — |
 | Own settings: name, password | ✓ | ✓ |
 | Theme/reference page (`/office/admin/theme`) | ✓ | — |
 
@@ -380,6 +382,57 @@ from the page and its actions. Lint and build pass.
 
 ---
 
+## Phase 3b — Admins cannot manage other admins
+
+**Owner's rule (2026-11-25):** on `/office/admin/staff`, an admin can manage **staff**
+accounts only. An admin cannot reset another admin's password, turn another admin
+off, or change another admin's role. Each admin changes only their own name and
+password, in Settings.
+
+Today the app allows all three (the **Manage** menu shows on other admins' rows, and
+the actions only refuse changes to yourself or the last admin). This phase closes that.
+
+Branch: `feat/staff-role`. Local database only. No schema change.
+
+### Steps
+
+1. **Server first** — `app/office/[section]/staff/actions.ts`:
+   - In `resetStaffPasswordAction`, `setStaffActiveAction` and `setStaffRoleAction`,
+     after loading the target account: if the target's role is `admin`, refuse with
+     the message *"Admin accounts can't be changed here."* This applies even when the
+     request is sent directly, not through the button.
+   - Check the target's role **as stored in the database**, never a role sent in the
+     form.
+   - Keep the existing rules (not yourself, not the last active admin) as they are.
+2. **Promote to admin (default, confirm with owner):** "Make admin" on a **staff** row
+   stays, and "Add an account" may still create an admin. Because the new admin can
+   then no longer be changed by anyone in the app, the confirm box must say so in
+   plain words: *"After this, no admin can reset their password, turn them off or make
+   them staff again in the app."*
+3. **UI** — `app/office/[section]/staff/page.tsx` and `staff-forms.tsx`:
+   - No **Manage** menu on any admin row (not only your own). Show a small muted
+     "Admin" note or nothing in that column, so the columns still line up.
+   - Staff rows keep Manage: Reset password, Make admin, Turn off / Turn on.
+4. **Docs:** add the rule to `CLAUDE.md` where the roles are described.
+
+**Do not touch:** `lib/session.ts`, `lib/auth.ts`, `prisma/`, `.env`, any other page.
+`lib/staff-store.ts` only if a helper is truly needed; keep `guardLastAdmin` as is.
+
+**Done when:**
+
+- As admin, admin rows show no Manage menu; staff rows still do.
+- A direct request to reset, turn off or demote another admin is refused with the
+  message above, and nothing changes in the database.
+- Reset password, Make admin and Turn off/on still work on a staff account.
+- Your own row still has no menu; Settings still lets you change your own password.
+- Lint and build pass. Tick Phase 3b in **Progress**.
+
+**Known gap (owner's call):** if an admin forgets their password, no one can reset it
+in the app any more. Today the only way is a developer changing it in the database.
+A safe reset script can be planned later if needed.
+
+---
+
 ## Phase 4 — Move routes to `/office/admin` and `/office/staff`
 
 **Goal:** two separate sections. Staff never see or open the admin section. Admin can
@@ -546,6 +599,8 @@ Admin:
       still one click away.
 - [x] Deleted orders list and Restore work; stock unchanged on restore (decision B).
 - [x] Staff page: create, reset password, turn off/on; cannot turn off self or last admin.
+- [x] Phase 3b: no Manage menu on admin rows; direct reset / turn off / demote of another
+      admin is refused.
 - [x] Old `/user/...` bookmark redirects correctly.
 - [x] Invoice prints without staff name.
 

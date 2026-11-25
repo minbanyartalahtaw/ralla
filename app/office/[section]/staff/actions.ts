@@ -26,6 +26,12 @@ async function target(formData: FormData) {
   return getStaff(id);
 }
 
+/** Admins manage staff accounts only; another admin's account is off limits. */
+const OTHER_ADMIN: StaffFormState = {
+  errors: {},
+  message: "Admin accounts can't be changed here.",
+};
+
 function done(ok: string): StaffFormState {
   revalidatePath("/office/[section]/staff", "page");
   return { errors: {}, ok };
@@ -71,6 +77,7 @@ export async function resetStaffPasswordAction(
   const me = await requireAbility("manageStaff");
   const staff = await target(formData);
   if (!staff) return { errors: {}, message: "That account no longer exists." };
+  if (staff.role === "admin" && staff.id !== me.id) return OTHER_ADMIN;
   // Here it would sign the admin out of this very browser; Settings re-issues
   // the cookie and asks for the current password.
   if (staff.id === me.id)
@@ -91,6 +98,7 @@ export async function setStaffActiveAction(
   const me = await requireAbility("manageStaff");
   const staff = await target(formData);
   if (!staff) return { errors: {}, message: "That account no longer exists." };
+  if (staff.role === "admin" && staff.id !== me.id) return OTHER_ADMIN;
 
   const active = formData.get("active") === "true";
   if (staff.id === me.id && !active)
@@ -112,6 +120,7 @@ export async function setStaffRoleAction(
   const me = await requireAbility("manageStaff");
   const staff = await target(formData);
   if (!staff) return { errors: {}, message: "That account no longer exists." };
+  if (staff.role === "admin" && staff.id !== me.id) return OTHER_ADMIN;
 
   const role = formData.get("role") === "admin" ? "admin" : "staff";
   if (staff.id === me.id && role !== "admin")

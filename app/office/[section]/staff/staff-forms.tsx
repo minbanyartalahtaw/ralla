@@ -224,7 +224,7 @@ export function StaffRowActions({
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {nextRole === "admin"
-                  ? "Admins can see the dashboard, edit products and customers, restore deleted orders and manage staff."
+                  ? "Admins can see the dashboard, edit products and customers, restore deleted orders and manage staff. After this, no admin can reset their password, turn them off or make them staff again in the app."
                   : "Staff can write and edit orders, and see products and customers. They lose admin pages."}
               </AlertDialogDescription>
             </AlertDialogHeader>
