@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createSession, requireSession } from "@/lib/auth";
+import { createSession, requireAbility, requireSession } from "@/lib/auth";
 import {
   MIN_PASSWORD_LENGTH,
   hashPassword,
@@ -21,7 +21,8 @@ export async function updateNameAction(
   _prevState: SettingsFormState,
   formData: FormData,
 ): Promise<SettingsFormState> {
-  const staff = await requireSession();
+  // Staff names are set by an admin; only admins rename themselves.
+  const staff = await requireAbility("changeOwnName");
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { errors: { name: "Name is required." } };

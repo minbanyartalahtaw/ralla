@@ -264,7 +264,7 @@ case-insensitive match. Passwords are scrypt hashes from `lib/password.ts`
 (`scrypt$<salt>$<hash>`) — never stored or logged in the clear. `active = false`
 switches someone off without deleting them.
 
-Each person changes their own name and password at `settings` (the id comes from
+Each person changes their own password at `settings`; only admins may also change their own name (`changeOwnName` — a staff member's name is the one an admin gave them) (the id comes from
 the session, never the form). A password change re-issues the current browser's cookie;
 every other cookie for that person dies on its next request via `pv`.
 

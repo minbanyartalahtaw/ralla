@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { getCurrentStaff } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 
 import { Section } from "./field";
 import { PasswordForm } from "./password-form";
@@ -35,8 +36,14 @@ export default async function SettingsPage() {
               <dt className="text-muted-foreground">Role</dt>
               <dd className="mt-0.5 font-medium">{ROLE_LABEL[staff.role]}</dd>
             </div>
+            {can(staff, "changeOwnName") ? null : (
+              <div>
+                <dt className="text-muted-foreground">Name</dt>
+                <dd className="mt-0.5 font-medium">{staff.name}</dd>
+              </div>
+            )}
           </dl>
-          <ProfileForm name={staff.name} />
+          {can(staff, "changeOwnName") ? <ProfileForm name={staff.name} /> : null}
         </Section>
 
         <Section title="Password">

@@ -21,6 +21,7 @@ const ALL_ABILITIES = [
   "viewDeletedOrders",
   "restoreOrders",
   "viewTheme",
+  "changeOwnName",
 ] as const;
 
 export type Ability = (typeof ALL_ABILITIES)[number];

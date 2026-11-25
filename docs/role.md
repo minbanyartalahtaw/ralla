@@ -493,7 +493,7 @@ the Phase 4 note; put a staff-only screen in its own component and choose it the
    No edit sheet, no Add product, no on/off switch. Search stays.
 5. **Customers** — list + detail, read only: name, phone, address, their orders.
    **No total spent**, no edit card, no avatar picker.
-6. **Settings** — same as admin (own name and password).
+6. **Settings** — own password only; the name is shown, not editable (changed 2026-11-25).
 
 Admin polish in this phase:
 
