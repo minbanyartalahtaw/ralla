@@ -14,6 +14,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "admin:create": "tsx scripts/create-admin.ts",
+    "staff:create": "tsx scripts/create-staff.ts",
     "db:backup": "./scripts/backup-db.sh",
     "postinstall": "prisma generate"
   },
