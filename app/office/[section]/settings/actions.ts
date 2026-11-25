@@ -29,8 +29,8 @@ export async function updateNameAction(
     return { errors: { name: `Keep it under ${MAX_NAME_LENGTH} characters.` } };
 
   await updateStaffName(staff.id, name);
-  // The sidebar footer is rendered by the /user layout.
-  revalidatePath("/user", "layout");
+  // The sidebar footer is rendered by the section layout.
+  revalidatePath("/office/[section]", "layout");
   return { errors: {}, ok: true };
 }
 

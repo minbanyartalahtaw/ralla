@@ -5,7 +5,7 @@
  * in one place. Nothing here is real data.
  *
  * Deliberately unlinked: no nav entry, no button, nowhere in the UI points at
- * it. Reachable only by typing `/user/theme`. It sits under `/user` so proxy.ts
+ * it. Reachable only by typing `/office/admin/theme`. It sits under `/office` so proxy.ts
  * still requires a session — a shop's customers have no business seeing the
  * component gallery, and staff have no reason to stumble into it either.
  */
@@ -46,6 +46,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { OrdersToolbar } from "./_components/orders-toolbar";
+import { requireAbility } from "@/lib/auth";
+import { adminSectionOnly } from "@/app/office/[section]/_components/section";
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 // Single source of truth for delivery status. Never hand-type these strings at
@@ -267,11 +269,13 @@ const STATUS_KEYS = Object.keys(DELIVERY_STATUS) as DeliveryStatus[];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function StyleGuide() {
+export default async function StyleGuide({ params }: PageProps<"/office/[section]/theme">) {
+  await requireAbility("viewTheme");
+  await adminSectionOnly(params);
   const th = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
   return (
-    // No shell of its own: the /user layout already supplies the sidebar, the
+    // No shell of its own: the section layout already supplies the sidebar, the
     // top bar and the page padding.
     <div className="space-y-8">
 

@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 import { ProductEditSheet } from "./product-edit-sheet";
+import { StockMark } from "./stock-mark";
 import type { Product } from "@/lib/products";
 import {
   PRODUCT_ACTIVITY,
@@ -9,7 +10,14 @@ import {
   productActivity,
 } from "@/lib/products";
 
-export function ProductContacts({ products }: { products: Product[] }) {
+export function ProductContacts({
+  products,
+  readOnly = false,
+}: {
+  products: Product[];
+  /** The staff screen: no edit sheet, stock shown as "Low · 3 left". */
+  readOnly?: boolean;
+}) {
   // Shared with the new-order picker, so both screens band the catalogue the
   // same way — see groupProductsByLetter().
   const groups = groupProductsByLetter(products);
@@ -32,15 +40,10 @@ export function ProductContacts({ products }: { products: Product[] }) {
               {letter}
             </h2>
             <ul className="divide-y divide-border/40">
-              {items.map((p) => {
-                const activity = PRODUCT_ACTIVITY[productActivity(p.isActive)];
-
-                return (
-                  <ProductEditSheet
-                    key={p.id}
-                    product={p}
-                    className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:px-4 ${p.isActive ? "" : "opacity-60"}`}
-                  >
+              {items.map((p) =>
+                readOnly ? (
+                  // Staff screen: nothing to open, nothing to change.
+                  <li key={p.id} className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="truncate text-[13px] font-medium leading-tight">{p.name}</span>
@@ -48,39 +51,69 @@ export function ProductContacts({ products }: { products: Product[] }) {
                           {p.sku}
                         </span>
                       </div>
-
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                        <span className="numeric font-medium text-foreground">
-                          {p.stock.toLocaleString()} <span className="font-normal text-muted-foreground">{p.stock === 1 ? "unit" : "units"}</span>
-                        </span>
-                        <span className="hidden size-1 rounded-full bg-border sm:inline-block" aria-hidden />
                         <span className="numeric font-medium text-foreground">
                           {p.price.toLocaleString()} <span className="font-normal text-muted-foreground">Ks</span>
                         </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="size-1 rounded-full bg-border" aria-hidden />
-                          <span className={`size-1.5 rounded-full ${activity.dot}`} aria-hidden />
-                          <span className="text-[11px] text-muted-foreground">{activity.label}</span>
-                        </span>
+                        <span className="size-1 rounded-full bg-border" aria-hidden />
+                        <StockMark stock={p.stock} />
                       </div>
                     </div>
-
-                    <div className="flex shrink-0 items-center">
-                      <HugeiconsIcon
-                        icon={ArrowRight01Icon}
-                        size={14}
-                        strokeWidth={1.8}
-                        className="text-muted-foreground/40"
-                        aria-hidden
-                      />
-                    </div>
-                  </ProductEditSheet>
-                );
-              })}
+                  </li>
+                ) : (
+                  <EditableRow key={p.id} p={p} />
+                ),
+              )}
             </ul>
           </section>
         );
       })}
     </div>
+  );
+}
+
+/** One row of the admin screen: opens the edit sheet. */
+function EditableRow({ p }: { p: Product }) {
+  const activity = PRODUCT_ACTIVITY[productActivity(p.isActive)];
+
+  return (
+    <ProductEditSheet
+      product={p}
+      className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:px-4 ${p.isActive ? "" : "opacity-60"}`}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="truncate text-[13px] font-medium leading-tight">{p.name}</span>
+          <span className="shrink-0 font-mono text-[10px] font-medium tracking-wide text-muted-foreground">
+            {p.sku}
+          </span>
+        </div>
+
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span className="numeric font-medium text-foreground">
+            {p.stock.toLocaleString()} <span className="font-normal text-muted-foreground">{p.stock === 1 ? "unit" : "units"}</span>
+          </span>
+          <span className="hidden size-1 rounded-full bg-border sm:inline-block" aria-hidden />
+          <span className="numeric font-medium text-foreground">
+            {p.price.toLocaleString()} <span className="font-normal text-muted-foreground">Ks</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="size-1 rounded-full bg-border" aria-hidden />
+            <span className={`size-1.5 rounded-full ${activity.dot}`} aria-hidden />
+            <span className="text-[11px] text-muted-foreground">{activity.label}</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center">
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          size={14}
+          strokeWidth={1.8}
+          className="text-muted-foreground/40"
+          aria-hidden
+        />
+      </div>
+    </ProductEditSheet>
   );
 }

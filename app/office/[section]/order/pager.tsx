@@ -22,6 +22,7 @@ import { ordersHref, type OrdersView } from "./orders-href";
  * the cards' own edge, so it drops to nothing and only the rule above stays.
  */
 export function Pager({
+  base,
   page,
   pageCount,
   query,
@@ -29,6 +30,7 @@ export function Pager({
   view,
   flush = false,
 }: {
+  base: string;
   page: number;
   pageCount: number;
   query: string;
@@ -63,7 +65,7 @@ export function Pager({
         variant="outline"
         size="sm"
         nativeButton={false}
-        render={<Link href={ordersHref({ query, status, page: to, view })} />}
+        render={<Link href={ordersHref(base, { query, status, page: to, view })} />}
       >
         {back ? arrow : null}
         {label}

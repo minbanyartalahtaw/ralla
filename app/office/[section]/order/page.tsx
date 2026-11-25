@@ -23,6 +23,8 @@ import {
   listOrdersPage,
   normalizeOrderQuery,
 } from "@/lib/order-store";
+import { getCurrentStaff } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 
 import { Pager } from "./pager";
 import { StatusSelect } from "./status-select";
@@ -39,6 +41,7 @@ import {
   itemCount,
   parseDeliveryStatus,
 } from "@/lib/orders";
+import { getSection } from "@/app/office/[section]/_components/section";
 
 export const metadata: Metadata = {
   title: "Orders — RALLA",
@@ -47,11 +50,17 @@ export const metadata: Metadata = {
 const th = "text-[11px] font-semibold tracking-wide text-muted-foreground uppercase";
 
 export default async function OrdersPage({
+  params,
   searchParams,
-}: PageProps<"/user/order">) {
-  const { q, status: rawStatus, page: rawPage, created, slug: createdSlug, view: rawView } = await searchParams;
+}: PageProps<"/office/[section]/order">) {
+  const { section, base } = await getSection(params);
+  const { q, status: rawStatus, page: rawPage, created, deleted, slug: createdSlug, view: rawView } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const createdCode = typeof created === "string" ? created : undefined;
+  // Set by deleteOrderAction's redirect, which lands here.
+  const deletedCode = typeof deleted === "string" ? deleted : undefined;
+  // The layout has already turned away anyone without a session.
+  const staff = await getCurrentStaff();
   const status = parseDeliveryStatus(
     typeof rawStatus === "string" ? rawStatus : undefined,
   );
@@ -89,9 +98,15 @@ export default async function OrdersPage({
       <h1 className="sr-only">Orders</h1>
 
       <CreatedToast
-        code={createdCode}
-        message={createdCode ? `Order ${createdCode} created.` : ""}
-        detailHref={typeof createdSlug === "string" ? `/user/order/${createdSlug}` : undefined}
+        code={createdCode ?? deletedCode}
+        message={
+          createdCode
+            ? `Order ${createdCode} created.`
+            : deletedCode
+              ? `Order ${deletedCode} deleted.`
+              : ""
+        }
+        detailHref={typeof createdSlug === "string" ? `${base}/order/${createdSlug}` : undefined}
       />
 
       <div className="flex items-center gap-3">
@@ -102,7 +117,12 @@ export default async function OrdersPage({
           <OrderSearch query={query} status={status} view={view} />
         </div>
 
-        <Button nativeButton={false} render={<Link href="/user/order/new" />}>
+        {section === "admin" && staff && can(staff, "viewDeletedOrders") ? (
+          <Button variant="ghost" nativeButton={false} render={<Link href="/office/admin/order/deleted" />}>
+            Deleted orders
+          </Button>
+        ) : null}
+        <Button nativeButton={false} render={<Link href={`${base}/order/new`} />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           New order
         </Button>
@@ -110,9 +130,9 @@ export default async function OrdersPage({
 
       <div className="mt-4 flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <StatusTabs active={status} counts={counts} query={query} view={view} />
+          <StatusTabs base={base} active={status} counts={counts} query={query} view={view} />
         </div>
-        <ViewSwitch query={query} status={status} page={page} view={view} />
+        <ViewSwitch base={base} query={query} status={status} page={page} view={view} />
       </div>
 
       <div className={framed ? "mt-4 rounded-lg border bg-card" : "mt-4"}>
@@ -160,7 +180,7 @@ export default async function OrdersPage({
                   variant="outline"
                   nativeButton={false}
                   className="mt-4"
-                  render={<Link href="/user/order/new" />}
+                  render={<Link href={`${base}/order/new`} />}
                 >
                   Add an order
                 </Button>
@@ -195,7 +215,7 @@ export default async function OrdersPage({
                     {/* Whole-row hit area, as on the cards. Addressed by
                         `code`, not `id`, so a copied link reads as the row. */}
                     <Link
-                      href={`/user/order/${o.slug}`}
+                      href={`${base}/order/${o.slug}`}
                       aria-label={`View details for order ${o.code}`}
                       className="absolute inset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                     />
@@ -265,12 +285,13 @@ export default async function OrdersPage({
             </TableBody>
           </Table>
         ) : (
-          <OrderCards orders={orders} query={query} />
+          <OrderCards base={base} orders={orders} query={query} />
         )}
 
         {/* Inside the card and below the table, so it reads as the foot of the
             list. Renders nothing at all when everything fits on one page. */}
         <Pager
+          base={base}
           page={page}
           pageCount={pageCount}
           query={query}

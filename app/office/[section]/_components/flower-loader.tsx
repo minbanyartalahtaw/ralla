@@ -3,7 +3,7 @@ import { RallaMark } from "@/components/ralla-logo";
 /**
  * The one loading state for the whole admin app — the sidebar's own mark
  * (see user-sidebar.tsx), spinning. Used both for whole-route loading
- * (app/user/loading.tsx) and for the dashboard's lazy-loaded charts, so a
+ * (app/office/[section]/loading.tsx) and for the dashboard's lazy-loaded charts, so a
  * page never shows two different ideas of "loading" at once.
  */
 export function FlowerLoader({

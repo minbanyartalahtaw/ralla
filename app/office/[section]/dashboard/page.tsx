@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import { OrdersChart, RevenueChart } from "./lazy-charts";
 import { parseTrendRange, trendRange, trendSeries } from "./trend-range";
 import { TrendRangeSelect } from "./trend-range-select";
+import { requireAbility } from "@/lib/auth";
+import { adminSectionOnly } from "@/app/office/[section]/_components/section";
 
 export const metadata: Metadata = {
   title: "Dashboard — RALLA",
@@ -121,8 +123,11 @@ function RankedList({ data, unit }: { data: LabelledCount[]; unit: string }) {
 }
 
 export default async function DashboardPage({
+  params,
   searchParams,
-}: PageProps<"/user/dashboard">) {
+}: PageProps<"/office/[section]/dashboard">) {
+  await adminSectionOnly(params);
+  await requireAbility("viewDashboard");
   const { revenue: rawRevenue, orders: rawOrders } = await searchParams;
   const revenueRange = parseTrendRange(rawRevenue);
   const ordersRange = parseTrendRange(rawOrders);
@@ -176,7 +181,7 @@ export default async function DashboardPage({
               variant="outline"
               nativeButton={false}
               className="mt-4"
-              render={<Link href="/user/order/new" />}
+              render={<Link href="/office/admin/order/new" />}
             >
               Add the first order
             </Button>
@@ -201,7 +206,7 @@ export default async function DashboardPage({
                 return (
                   <li key={s}>
                     <Link
-                      href={`/user/order?status=${s}`}
+                      href={`/office/admin/order?status=${s}`}
                       className="group flex h-full items-center gap-3 px-4 py-3 transition-colors outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:flex-col sm:items-start sm:gap-1.5 sm:py-4"
                     >
                       <span className="flex min-w-0 flex-1 items-center gap-2 text-xs font-medium text-muted-foreground sm:flex-none">

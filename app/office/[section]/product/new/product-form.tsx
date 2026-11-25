@@ -194,7 +194,7 @@ export function ProductForm() {
         <Button
           variant="ghost"
           nativeButton={false}
-          render={<Link href="/user/product" />}
+          render={<Link href="/office/admin/product" />}
         >
           Cancel
         </Button>

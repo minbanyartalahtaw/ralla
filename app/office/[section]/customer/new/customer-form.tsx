@@ -21,6 +21,7 @@ import { CITIES } from "@/lib/orders";
 
 import { createCustomerAction } from "./actions";
 import { emptyCreateCustomerState } from "./state";
+import { useSection } from "@/app/office/[section]/_components/use-section";
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
@@ -55,6 +56,7 @@ function Label({
 }
 
 export function CustomerForm() {
+  const { section, base } = useSection();
   const [state, formAction, pending] = useActionState(
     createCustomerAction,
     emptyCreateCustomerState,
@@ -68,6 +70,8 @@ export function CustomerForm() {
 
   return (
     <form action={formAction} className="space-y-6">
+      {/* Which section to land back in — see formSectionBase(). */}
+      <input type="hidden" name="section" value={section} />
       {state.message ? (
         <div
           role="alert"
@@ -171,7 +175,7 @@ export function CustomerForm() {
         <Button
           variant="ghost"
           nativeButton={false}
-          render={<Link href="/user/customer" />}
+          render={<Link href={`${base}/customer`} />}
         >
           Cancel
         </Button>

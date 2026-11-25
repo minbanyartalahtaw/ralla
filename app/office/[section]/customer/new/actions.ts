@@ -3,16 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import { createCustomer } from "@/lib/customer-store";
 import { CITIES } from "@/lib/orders";
 import type { CreateCustomerState } from "./state";
+import { formSectionBase } from "@/app/office/[section]/_components/section";
 
 export async function createCustomerAction(
   _prevState: CreateCustomerState,
   formData: FormData,
 ): Promise<CreateCustomerState> {
-  await requireSession();
+  await requireAbility("createCustomer");
 
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -46,6 +47,6 @@ export async function createCustomerAction(
     note,
   });
 
-  revalidatePath("/user/customer");
-  redirect(`/user/customer?created=${customer.code}&slug=${customer.slug}`);
+  revalidatePath("/office/[section]/customer", "page");
+  redirect(`${formSectionBase(formData)}/customer?created=${customer.code}&slug=${customer.slug}`);
 }

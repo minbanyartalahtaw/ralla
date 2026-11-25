@@ -21,14 +21,17 @@ import {
 } from "@/components/ui/input-group";
 import { listCustomers, normalizeCustomerQuery } from "@/lib/customer-store";
 import { formatDate } from "@/lib/orders";
+import { getSection } from "@/app/office/[section]/_components/section";
 
 export const metadata: Metadata = {
   title: "Customers — RALLA",
 };
 
 export default async function CustomersPage({
+  params,
   searchParams,
-}: PageProps<"/user/customer">) {
+}: PageProps<"/office/[section]/customer">) {
+  const { base } = await getSection(params);
   const { q, created, slug: createdSlug } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const customers = await listCustomers(query);
@@ -46,7 +49,7 @@ export default async function CustomersPage({
       <CreatedToast
         code={createdCode}
         message={createdCode ? `Customer ${createdCode} added.` : ""}
-        detailHref={typeof createdSlug === "string" ? `/user/customer/${createdSlug}` : undefined}
+        detailHref={typeof createdSlug === "string" ? `${base}/customer/${createdSlug}` : undefined}
       />
 
       <div className="flex items-center gap-3">
@@ -78,7 +81,7 @@ export default async function CustomersPage({
                   size="icon-xs"
                   variant="ghost"
                   nativeButton={false}
-                  render={<Link href="/user/customer" />}
+                  render={<Link href={`${base}/customer`} />}
                   aria-label="Clear search"
                 >
                   <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
@@ -92,7 +95,7 @@ export default async function CustomersPage({
           </InputGroup>
         </form>
 
-        <Button nativeButton={false} render={<Link href="/user/customer/new" />}>
+        <Button nativeButton={false} render={<Link href={`${base}/customer/new`} />}>
           <HugeiconsIcon icon={UserAdd01Icon} data-icon="inline-start" />
           
         </Button>
@@ -116,7 +119,7 @@ export default async function CustomersPage({
                   variant="outline"
                   nativeButton={false}
                   className="mt-4"
-                  render={<Link href="/user/customer" />}
+                  render={<Link href={`${base}/customer`} />}
                 >
                   Show all customers
                 </Button>
@@ -132,7 +135,7 @@ export default async function CustomersPage({
                   variant="outline"
                   nativeButton={false}
                   className="mt-4"
-                  render={<Link href="/user/customer/new" />}
+                  render={<Link href={`${base}/customer/new`} />}
                 >
                   Add a customer
                 </Button>
@@ -148,7 +151,7 @@ export default async function CustomersPage({
             {customers.map((c) => (
               <li key={c.id}>
                 <Link
-                  href={`/user/customer/${c.slug}`}
+                  href={`${base}/customer/${c.slug}`}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-accent"
                 >
                   <CustomerAvatar

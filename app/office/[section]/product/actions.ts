@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import {
   findProductBySku,
   setProductActive,
@@ -28,15 +28,15 @@ function productId(formData: FormData): number {
  * removing the product would orphan every past line that referenced it.
  */
 export async function toggleProductActiveAction(formData: FormData) {
-  await requireSession();
+  await requireAbility("manageProducts");
   const isActive = formData.get("isActive") === "true";
   await setProductActive(productId(formData), isActive);
 
-  revalidatePath("/user/product");
+  revalidatePath("/office/[section]/product", "page");
   // Changes what the order form's picker can offer.
-  revalidatePath("/user/order/new");
+  revalidatePath("/office/[section]/order/new", "page");
   // Same for the edit form's picker, on every order.
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
 }
 
 /**
@@ -52,7 +52,7 @@ export async function toggleProductActiveAction(formData: FormData) {
 export async function setProductSkuAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
-  await requireSession();
+  await requireAbility("manageProducts");
   const id = productId(formData);
   const sku = normalizeSku(String(formData.get("sku") ?? ""));
 
@@ -71,7 +71,7 @@ export async function setProductSkuAction(
   await setProductSku(id, sku);
 
   // The SKU isn't shown on the order form's picker, unlike name and price.
-  revalidatePath("/user/product");
+  revalidatePath("/office/[section]/product", "page");
   return {};
 }
 
@@ -79,7 +79,7 @@ export async function setProductSkuAction(
 export async function setProductNameAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
-  await requireSession();
+  await requireAbility("manageProducts");
   const name = String(formData.get("name") ?? "").trim();
   if (!name) {
     return { error: "Product name is required." };
@@ -87,10 +87,10 @@ export async function setProductNameAction(
 
   await setProductName(productId(formData), name);
 
-  revalidatePath("/user/product");
+  revalidatePath("/office/[section]/product", "page");
   // The order form's picker labels each product by name.
-  revalidatePath("/user/order/new");
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/new", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
   return {};
 }
 
@@ -102,7 +102,7 @@ export async function setProductNameAction(
  * keystroke can't quietly write a wrong number onto the shelf count.
  */
 export async function setProductStockAction(formData: FormData) {
-  await requireSession();
+  await requireAbility("manageProducts");
   const stock = parseStock(String(formData.get("stock") ?? ""));
   if (stock === null) {
     throw new Error("Stock must be a whole number of units, 0 or more.");
@@ -110,12 +110,12 @@ export async function setProductStockAction(formData: FormData) {
 
   await setProductStock(productId(formData), stock);
 
-  revalidatePath("/user/product");
+  revalidatePath("/office/[section]/product", "page");
   // The counts the order form's picker prints beside each product are these.
   // Without this, a shelf corrected here still reads as the old number on a
   // form the browser has already visited.
-  revalidatePath("/user/order/new");
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/new", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
 }
 
 /**
@@ -125,7 +125,7 @@ export async function setProductStockAction(formData: FormData) {
  * snapshot, so nothing already sold is repriced — see setProductPrice.
  */
 export async function setProductPriceAction(formData: FormData) {
-  await requireSession();
+  await requireAbility("manageProducts");
   const price = parsePrice(String(formData.get("price") ?? ""));
   if (price === null) {
     throw new Error("Price must be a whole number of kyats, at least 1.");
@@ -133,8 +133,8 @@ export async function setProductPriceAction(formData: FormData) {
 
   await setProductPrice(productId(formData), price);
 
-  revalidatePath("/user/product");
+  revalidatePath("/office/[section]/product", "page");
   // The order form's picker prints each product's price beside its name.
-  revalidatePath("/user/order/new");
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/new", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
 }

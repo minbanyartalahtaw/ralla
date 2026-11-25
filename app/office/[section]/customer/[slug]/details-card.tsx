@@ -82,7 +82,14 @@ function Row({
  * code is the permanent identity a saved link points at, and the rest isn't
  * something staff correct by hand.
  */
-export function DetailsCard({ customer }: { customer: Customer }) {
+export function DetailsCard({
+  customer,
+  readOnly = false,
+}: {
+  customer: Customer;
+  /** The staff screen: the same details, no Edit button. */
+  readOnly?: boolean;
+}) {
   const [pending, startTransition] = React.useTransition();
   const [editing, setEditing] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -118,7 +125,7 @@ export function DetailsCard({ customer }: { customer: Customer }) {
     <section className="mt-6">
       <div className="flex items-center justify-between px-1">
         <h2 className={label}>Details</h2>
-        {!editing ? (
+        {!editing && !readOnly ? (
           <Button
             variant="outline"
             size="sm"

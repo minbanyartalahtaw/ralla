@@ -1,12 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import { searchCustomers } from "@/lib/customer-store";
 import type { Customer } from "@/lib/customers";
-import { updateOrderNote, updateOrderStatus } from "@/lib/order-store";
+import {
+  restoreOrder,
+  softDeleteOrder,
+  updateOrderNote,
+  updateOrderStatus,
+} from "@/lib/order-store";
 import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
+import { formSectionBase } from "@/app/office/[section]/_components/section";
 
 /**
  * Type-ahead lookup for the customer autofill on the order form, used by both
@@ -15,12 +22,12 @@ import { DELIVERY_STATUS, type DeliveryStatus } from "@/lib/orders";
  * The session check is load-bearing here rather than defensive: this returns
  * phone numbers and addresses, and a Server Action is callable by direct POST,
  * so without it this is an open customer-data endpoint no matter what the
- * proxy does to `/user/*`.
+ * proxy does to `/office/*`.
  */
 export async function searchCustomersAction(
   query: string,
 ): Promise<Customer[]> {
-  await requireSession();
+  await requireAbility("writeOrders");
   return searchCustomers(query);
 }
 
@@ -31,9 +38,7 @@ export async function searchCustomersAction(
  * current value, so "when did this ship" stays answerable.
  */
 export async function updateOrderStatusAction(formData: FormData) {
-  await requireSession();
-  // NOTE: `changedBy` is still left empty. The session is a shared password
-  // and carries no identity, so there is no name to record yet.
+  const staff = await requireAbility("writeOrders");
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
   if (!Number.isSafeInteger(id) || id < 1) {
     throw new Error("A valid order id is required.");
@@ -45,28 +50,58 @@ export async function updateOrderStatusAction(formData: FormData) {
     throw new Error(`Unknown delivery status: ${status}`);
   }
 
-  await updateOrderStatus(id, status as DeliveryStatus);
+  await updateOrderStatus(id, status as DeliveryStatus, staff);
 
-  revalidatePath("/user/order");
-  revalidatePath("/user/dashboard");
+  revalidatePath("/office/[section]/order", "page");
+  revalidatePath("/office/[section]/dashboard", "page");
 }
 
 /** Overwrites an order's free-text note from its detail page. */
 export async function updateOrderNoteAction(formData: FormData) {
-  await requireSession();
+  const staff = await requireAbility("writeOrders");
 
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
   if (!Number.isSafeInteger(id) || id < 1) {
     throw new Error("A valid order id is required.");
   }
-  const slug = String(formData.get("slug") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
-  await updateOrderNote(id, note);
+  await updateOrderNote(id, note, staff);
 
-  revalidatePath(`/user/order/${slug}`);
+  revalidatePath("/office/[section]/order/[slug]", "page");
   // The edit form carries this same field. Without this it would still hold
   // the note as it was when that page was last rendered, and saving an
   // unrelated change there would quietly put the old text back.
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
+}
+
+function orderId(formData: FormData): number {
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isSafeInteger(id) || id < 1) {
+    throw new Error("A valid order id is required.");
+  }
+  return id;
+}
+
+/** Every page that lists, counts or totals orders. */
+function revalidateOrderLists() {
+  revalidatePath("/office/[section]/order", "page");
+  revalidatePath("/office/[section]/order/deleted", "page");
+  revalidatePath("/office/[section]/dashboard", "page");
+  revalidatePath("/office/[section]/customer/[slug]", "page");
+}
+
+/** Soft-deletes an order from its detail page. Both roles; stock is untouched. */
+export async function deleteOrderAction(formData: FormData) {
+  const staff = await requireAbility("deleteOrders");
+  const order = await softDeleteOrder(orderId(formData), staff);
+  revalidateOrderLists();
+  redirect(`${formSectionBase(formData)}/order?deleted=${order.code}`);
+}
+
+/** Brings a deleted order back, from the admin's Deleted orders list. */
+export async function restoreOrderAction(formData: FormData) {
+  const staff = await requireAbility("restoreOrders");
+  await restoreOrder(orderId(formData), staff);
+  revalidateOrderLists();
 }

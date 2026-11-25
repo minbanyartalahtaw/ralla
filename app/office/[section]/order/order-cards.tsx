@@ -71,9 +71,11 @@ import { StatusSelect } from "./status-select";
  * opening the order.
  */
 export function OrderCards({
+  base,
   orders,
   query,
 }: {
+  base: string;
   orders: OrderWithItems[];
   query: string;
 }) {
@@ -95,7 +97,7 @@ export function OrderCards({
                 carries no text of its own, so the accessible name has to come
                 from `aria-label`. */}
             <Link
-              href={`/user/order/${o.slug}`}
+              href={`${base}/order/${o.slug}`}
               aria-label={`View details for order ${o.code}`}
               className="absolute inset-0 rounded-lg focus-visible:outline-none"
             />

@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 
-/** `/user` isn't a screen — it's the section root. Send it to the dashboard. */
-export default function UserPage() {
-  redirect("/user/dashboard");
+import { requireSession } from "@/lib/auth";
+import { homePathFor } from "@/lib/permissions";
+
+/** `/office/admin` and `/office/staff` aren't screens. Send each role to its home. */
+export default async function SectionPage() {
+  redirect(homePathFor((await requireSession()).role));
 }

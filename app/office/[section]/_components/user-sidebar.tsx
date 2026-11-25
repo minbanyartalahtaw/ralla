@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Calendar03Icon,
-  DashboardSquare01Icon,
+  ArrowDown01Icon,
   Logout01Icon,
-  Package02Icon,
   PlusSignIcon,
   Settings02Icon,
   UnfoldMoreIcon,
-  UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 
 import { signOutAction } from "@/app/login/actions";
@@ -47,31 +44,104 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 
 import { RallaMark, RallaWordmark } from "@/components/ralla-logo";
 
+import type { NavGroup } from "./nav";
 import { ThemeToggleItem } from "./theme-toggle-item";
+import { useSection } from "./use-section";
 
 /**
- * `newHref` adds a "+" shortcut beside the item, for the one route staff open
- * far more often to create than to browse.
+ * The item the current page belongs to: the longest href the path is, or sits
+ * under, across every group. Longest wins so /office/admin/order/deleted lights
+ * "Deleted orders" rather than "Orders", and /office/staff/order lights Staff →
+ * Orders rather than Admin → Orders.
  */
-const ORDER_NAV = [
-  { label: "Dashboard", href: "/user/dashboard", icon: DashboardSquare01Icon },
-  {
-    label: "Orders",
-    href: "/user/order",
-    icon: Calendar03Icon,
-    newHref: "/user/order/new",
-    newLabel: "New order",
-  },
-  { label: "Products", href: "/user/product", icon: Package02Icon },
-  { label: "Customers", href: "/user/customer", icon: UserGroupIcon },
-] as const;
+function activeHref(pathname: string, groups: NavGroup[]): string | undefined {
+  return groups
+    .flatMap((g) => g.items.map((i) => i.href))
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((x, y) => y.length - x.length)[0];
+}
 
-export function UserSidebar({ name }: { name: string }) {
+function NavSection({ group, active }: { group: NavGroup; active?: string }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const shown = !group.collapsible || open;
+
+  return (
+    <SidebarGroup>
+      {group.collapsible ? (
+        <SidebarGroupLabel
+          render={
+            <button
+              type="button"
+              aria-expanded={shown}
+              aria-controls={id}
+              onClick={() => setOpen(!shown)}
+            />
+          }
+          className="w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          {group.label}
+          <HugeiconsIcon
+            icon={ArrowDown01Icon}
+            strokeWidth={1.5}
+            className={`ml-auto transition-transform ${shown ? "" : "-rotate-90"}`}
+          />
+        </SidebarGroupLabel>
+      ) : (
+        <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+      )}
+      {/* The icon rail hides the label, and with it the toggle — so a folded
+          group still shows its icons there. */}
+      <SidebarGroupContent
+        id={id}
+        className={shown ? undefined : "hidden group-data-[collapsible=icon]:block"}
+      >
+        <SidebarMenu>
+          {group.items.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                isActive={item.href === active}
+                tooltip={`${group.label} · ${item.label}`}
+                render={<Link href={item.href} />}
+              >
+                <HugeiconsIcon icon={item.icon} strokeWidth={1.5} />
+                <span>{item.label}</span>
+              </SidebarMenuButton>
+              {item.newHref ? (
+                <SidebarMenuAction
+                  title={item.newLabel}
+                  render={<Link href={item.newHref} />}
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
+                  <span className="sr-only">{item.newLabel}</span>
+                </SidebarMenuAction>
+              ) : null}
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+/** `groups` and `home` come from the server (see nav.ts), decided by role. */
+export function UserSidebar({
+  name,
+  groups,
+  home,
+}: {
+  name: string;
+  groups: NavGroup[];
+  home: string;
+}) {
   const pathname = usePathname();
+  const active = activeHref(pathname, groups);
+  const { base } = useSection();
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   return (
@@ -82,7 +152,7 @@ export function UserSidebar({ name }: { name: string }) {
             <SidebarMenuButton
               size="lg"
               tooltip="RALLA"
-              render={<Link href="/user/dashboard" />}
+              render={<Link href={home} />}
             >
               <span
                 className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"
@@ -97,38 +167,15 @@ export function UserSidebar({ name }: { name: string }) {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Operations</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {ORDER_NAV.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton
-                    // Prefix match so /user/order/new keeps "Orders" lit.
-                    isActive={
-                      pathname === item.href ||
-                      pathname.startsWith(`${item.href}/`)
-                    }
-                    tooltip={item.label}
-                    render={<Link href={item.href} />}
-                  >
-                    <HugeiconsIcon icon={item.icon} strokeWidth={1.5} />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                  {"newHref" in item ? (
-                    <SidebarMenuAction
-                      title={item.newLabel}
-                      render={<Link href={item.newHref} />}
-                    >
-                      <HugeiconsIcon icon={PlusSignIcon} strokeWidth={2} />
-                      <span className="sr-only">{item.newLabel}</span>
-                    </SidebarMenuAction>
-                  ) : null}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {groups.map((group, g) => (
+          <div key={group.label} className="contents">
+            {/* Only visible collapsed, where the group labels are hidden. */}
+            {g > 0 ? (
+              <SidebarSeparator className="hidden group-data-[collapsible=icon]:block" />
+            ) : null}
+            <NavSection group={group} active={active} />
+          </div>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
@@ -167,7 +214,7 @@ export function UserSidebar({ name }: { name: string }) {
               >
 
 
-                <DropdownMenuItem render={<Link href="/user/settings" />}>
+                <DropdownMenuItem render={<Link href={`${base}/settings`} />}>
                   <HugeiconsIcon icon={Settings02Icon} strokeWidth={1.5} />
                   Settings
                 </DropdownMenuItem>

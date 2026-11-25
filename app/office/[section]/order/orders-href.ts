@@ -9,7 +9,7 @@ export type OrdersView = {
 };
 
 /**
- * Builds a URL for the orders list. Every link that changes what is shown goes
+ * Builds a URL for the orders list in `base`'s section. Every link that changes what is shown goes
  * through here, so the search, the status tab and the page number survive each
  * other — changing one must never silently drop the other two.
  *
@@ -18,7 +18,10 @@ export type OrdersView = {
  * narrowed to the three that are pending. Page 1 is left out of the query
  * string entirely so the default view has a clean URL.
  */
-export function ordersHref({ query, status, page, view }: OrdersView): string {
+export function ordersHref(
+  base: string,
+  { query, status, page, view }: OrdersView,
+): string {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (status) params.set("status", status);
@@ -28,5 +31,5 @@ export function ordersHref({ query, status, page, view }: OrdersView): string {
   if (view === "table") params.set("view", "table");
 
   const qs = params.toString();
-  return qs ? `/user/order?${qs}` : "/user/order";
+  return qs ? `${base}/order?${qs}` : `${base}/order`;
 }

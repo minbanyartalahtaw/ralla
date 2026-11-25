@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import {
   getOrder,
   OutOfStockError,
@@ -14,6 +14,7 @@ import { getProduct } from "@/lib/product-store";
 import type { OrderFormState } from "../../order-form-state";
 import { parseOrderFields } from "../../parse-fields";
 import { parseOrderLines } from "../../parse-lines";
+import { formSectionBase } from "@/app/office/[section]/_components/section";
 
 function parseId(raw: FormDataEntryValue | null) {
   const n = Number.parseInt(String(raw ?? ""), 10);
@@ -31,7 +32,7 @@ export async function updateOrderAction(
   _prevState: OrderFormState,
   formData: FormData,
 ): Promise<OrderFormState> {
-  await requireSession();
+  const staff = await requireAbility("writeOrders");
 
   const id = parseId(formData.get("orderId"));
   if (id === null) {
@@ -69,7 +70,7 @@ export async function updateOrderAction(
       // doesn't offer to change it, so neither does this.
       customerId: existing.customerId,
       lines: parsed.lines!,
-    });
+    }, staff);
   } catch (error) {
     // The check above ran against the counts this request read; someone else's
     // order can land in between. The transaction is the authority, so its
@@ -83,17 +84,17 @@ export async function updateOrderAction(
     throw error;
   }
 
-  revalidatePath(`/user/order/${existing.slug}`);
-  revalidatePath("/user/order");
-  revalidatePath("/user/dashboard");
+  revalidatePath("/office/[section]/order/[slug]", "page");
+  revalidatePath("/office/[section]/order", "page");
+  revalidatePath("/office/[section]/dashboard", "page");
   // The edit moved units on and off the shelf, so the products table and the
   // new-order picker are both showing stale counts.
-  revalidatePath("/user/product");
-  revalidatePath("/user/order/new");
+  revalidatePath("/office/[section]/product", "page");
+  revalidatePath("/office/[section]/order/new", "page");
   // Same for the edit form's picker, on every order.
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
 
   // `?updated=1` is what the detail page toasts on, and it clears itself from
   // the URL once shown — see CreatedToast.
-  redirect(`/user/order/${existing.slug}?updated=1`);
+  redirect(`${formSectionBase(formData)}/order/${existing.slug}?updated=1`);
 }

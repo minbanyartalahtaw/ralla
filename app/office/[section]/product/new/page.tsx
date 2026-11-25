@@ -3,16 +3,23 @@ import type { Metadata } from "next";
 import { BackButton } from "@/components/back-button";
 
 import { ProductForm } from "./product-form";
+import { requireAbility } from "@/lib/auth";
+import { adminSectionOnly } from "@/app/office/[section]/_components/section";
 
 export const metadata: Metadata = {
   title: "New product — RALLA",
 };
 
-export default function NewProductPage() {
+export default async function NewProductPage({
+  params,
+}: PageProps<"/office/[section]/product/new">) {
+  await requireAbility("manageProducts");
+  await adminSectionOnly(params);
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="flex items-center gap-3">
-        <BackButton fallback="/user/product" />
+        <BackButton fallback="/office/admin/product" />
         <h1 className="bg-linear-to-r from-foreground via-primary to-foreground bg-clip-text text-xl font-bold tracking-[0.2em] text-transparent uppercase">
           New product
         </h1>

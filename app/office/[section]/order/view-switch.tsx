@@ -18,17 +18,19 @@ import { ordersHref } from "./orders-href";
  * cards.
  */
 export function ViewSwitch({
+  base,
   query,
   status,
   page,
   view,
 }: {
+  base: string;
   query: string;
   status?: keyof typeof import("@/lib/orders").DELIVERY_STATUS;
   page?: number;
   view: "card" | "table";
 }) {
-  const base =
+  const btn =
     "inline-flex size-6 items-center justify-center rounded-sm border text-xs transition-colors";
   const on = "border-primary/40 bg-primary/10 text-foreground";
   const off = "border-transparent text-muted-foreground hover:bg-muted";
@@ -40,20 +42,20 @@ export function ViewSwitch({
       className="flex items-center gap-1 rounded-lg border bg-card p-1"
     >
       <Link
-        href={ordersHref({ query, status, page })}
+        href={ordersHref(base, { query, status, page })}
         aria-pressed={view === "card"}
         aria-label="Card view"
         title="Card view"
-        className={`${base} ${view === "card" ? on : off}`}
+        className={`${btn} ${view === "card" ? on : off}`}
       >
         <HugeiconsIcon icon={GridViewIcon} size={14} strokeWidth={1.5} />
       </Link>
       <Link
-        href={ordersHref({ query, status, page, view: "table" })}
+        href={ordersHref(base, { query, status, page, view: "table" })}
         aria-pressed={view === "table"}
         aria-label="Table view"
         title="Table view"
-        className={`${base} ${view === "table" ? on : off}`}
+        className={`${btn} ${view === "table" ? on : off}`}
       >
         <HugeiconsIcon icon={Menu01Icon} size={14} strokeWidth={1.5} />
       </Link>

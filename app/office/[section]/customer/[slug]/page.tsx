@@ -4,11 +4,17 @@ import type { Metadata } from "next";
 
 import { getCustomerBySlug } from "@/lib/customer-store";
 import { listOrdersByCustomer } from "@/lib/order-store";
-import { formatDate, formatKyat, type OrderWithItems } from "@/lib/orders";
+import Link from "next/link";
+
+import { DELIVERY_STATUS, formatDate, formatKyat, type OrderWithItems } from "@/lib/orders";
 import { BackButton } from "@/components/back-button";
-import { RecordCrumb } from "@/app/user/_components/user-breadcrumb";
+import { RecordCrumb } from "@/app/office/[section]/_components/user-breadcrumb";
 import { AvatarPicker } from "./avatar-picker";
 import { DetailsCard } from "./details-card";
+import { getSection } from "@/app/office/[section]/_components/section";
+import { CustomerAvatar } from "@/components/customer-avatar";
+import { getCurrentStaff } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 
 /**
  * `generateMetadata` and the page body both need the customer, and both run on
@@ -18,7 +24,7 @@ const loadCustomer = cache(getCustomerBySlug);
 
 export async function generateMetadata({
   params,
-}: PageProps<"/user/customer/[slug]">): Promise<Metadata> {
+}: PageProps<"/office/[section]/customer/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const customer = await loadCustomer(slug);
 
@@ -50,8 +56,14 @@ function settled(orders: OrderWithItems[]) {
 
 export default async function CustomerDetailPage({
   params,
-}: PageProps<"/user/customer/[slug]">) {
+}: PageProps<"/office/[section]/customer/[slug]">) {
+  const { section, base } = await getSection(params);
   const { slug } = await params;
+  // The full screen needs both the admin section and the right to edit. Staff —
+  // and an admin looking at the staff section — get the read-only one, which
+  // also leaves out what the customer has spent in total.
+  const staff = await getCurrentStaff();
+  const editable = section === "admin" && staff !== null && can(staff, "manageCustomers");
   const customer = await loadCustomer(slug);
   if (!customer) notFound();
 
@@ -64,11 +76,18 @@ export default async function CustomerDetailPage({
   return (
     <div className="mx-auto max-w-[640px]">
       <RecordCrumb label={customer.code} />
-      <BackButton fallback="/user/customer" />
+      <BackButton fallback={`${base}/customer`} />
 
       <section className="mt-3 overflow-hidden rounded-2xl border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]">
         <div className="flex items-center gap-4 px-5 py-6 sm:gap-5 sm:px-8 sm:py-7">
-          <AvatarPicker customer={customer} />
+          {editable ? (
+            <AvatarPicker customer={customer} />
+          ) : (
+            <CustomerAvatar
+              customer={customer}
+              className="size-14 shrink-0 text-[15px] shadow-sm ring-2 ring-border/50"
+            />
+          )}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[17px] font-semibold tracking-tight text-foreground sm:text-lg">
               {customer.name}
@@ -83,9 +102,11 @@ export default async function CustomerDetailPage({
 
         {/* Three across even on a phone — the values are short, and stacking
             them would push the one number staff came for below the fold. */}
-        <dl className="grid grid-cols-3 divide-x divide-border border-t bg-muted/20">
+        <dl
+          className={`grid divide-x divide-border border-t bg-muted/20 ${editable ? "grid-cols-3" : "grid-cols-2"}`}
+        >
           <Stat title="Orders" value={String(counted.length)} />
-          <Stat title="Spent" value={formatKyat(totalSpent)} />
+          {editable ? <Stat title="Spent" value={formatKyat(totalSpent)} /> : null}
           <Stat
             title="Last order"
             value={lastOrder ? formatDate(lastOrder.placedAt) : "—"}
@@ -93,7 +114,43 @@ export default async function CustomerDetailPage({
         </dl>
       </section>
 
-      <DetailsCard customer={customer} />
+      <DetailsCard customer={customer} readOnly={!editable} />
+
+      {/* Every order, cancelled ones too — see settled(). Linked inside the
+          section this page is in. */}
+      <section className="mt-6">
+        <h2 className={`${label} px-1`}>Orders</h2>
+        {orders.length === 0 ? (
+          <p className="mt-2 rounded-lg border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
+            No orders yet.
+          </p>
+        ) : (
+          <ul className="mt-2 divide-y overflow-hidden rounded-lg border bg-card">
+            {orders.map((o) => {
+              const s = DELIVERY_STATUS[o.status];
+              return (
+                <li key={o.id}>
+                  <Link
+                    href={`${base}/order/${o.slug}`}
+                    className="flex items-center gap-3 px-4 py-3 text-xs transition-colors hover:bg-muted/40"
+                  >
+                    <span className="numeric font-mono font-semibold">{o.code}</span>
+                    <span className="numeric flex-1 text-muted-foreground">
+                      {formatDate(o.placedAt)}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none ${s.chip}`}
+                    >
+                      <span className={`size-1.5 rounded-full ${s.dot}`} aria-hidden />
+                      {s.label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

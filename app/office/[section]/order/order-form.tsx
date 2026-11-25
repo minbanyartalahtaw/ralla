@@ -34,9 +34,10 @@ import {
   emptyOrderFormState,
   type OrderFormAction,
 } from "./order-form-state";
+import { useSection } from "@/app/office/[section]/_components/use-section";
 
 /**
- * What an existing order fills the form with. Absent on /user/order/new.
+ * What an existing order fills the form with. Absent on the new-order page.
  *
  * These are the order's own snapshot, not the linked customer's record — the
  * point of editing an order is to correct where *this* parcel goes.
@@ -98,7 +99,7 @@ function Label({
 }
 
 /**
- * The order form, shared by /user/order/new and /user/order/[slug]/edit.
+ * The order form, shared by `order/new` and `order/[slug]/edit`.
  *
  * One component rather than two on purpose: an edit that looked different from
  * the form staff already know would be a second layout to learn for the same
@@ -138,6 +139,7 @@ export function OrderForm({
   showStockNote?: boolean;
   submitLabel?: string;
 }) {
+  const { section } = useSection();
   const [state, formAction, pending] = useActionState(
     action,
     emptyOrderFormState,
@@ -202,6 +204,8 @@ export function OrderForm({
 
   return (
     <form action={formAction} className="space-y-5">
+      {/* Which section to land back in — see formSectionBase(). */}
+      <input type="hidden" name="section" value={section} />
       {Object.entries(hidden ?? {}).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}

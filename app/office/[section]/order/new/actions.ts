@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import { createOrder, OutOfStockError } from "@/lib/order-store";
 import { getProduct } from "@/lib/product-store";
 import type { OrderWithItems } from "@/lib/orders";
@@ -11,12 +11,13 @@ import type { OrderWithItems } from "@/lib/orders";
 import type { OrderFormState } from "../order-form-state";
 import { parseOrderFields } from "../parse-fields";
 import { parseOrderLines } from "../parse-lines";
+import { formSectionBase } from "@/app/office/[section]/_components/section";
 
 export async function createOrderAction(
   _prevState: OrderFormState,
   formData: FormData,
 ): Promise<OrderFormState> {
-  await requireSession();
+  const staff = await requireAbility("writeOrders");
 
   const { fields, errors } = parseOrderFields(formData);
   const notifyBySms = formData.get("notifyBySms") === "on";
@@ -34,7 +35,7 @@ export async function createOrderAction(
       ...fields,
       notifyBySms,
       lines: parsed.lines!,
-    });
+    }, staff);
   } catch (error) {
     // The stock check above ran against the counts this request read; someone
     // else's order can land in between. The transaction is the authority, so
@@ -48,14 +49,14 @@ export async function createOrderAction(
     throw error;
   }
 
-  revalidatePath("/user/order");
-  revalidatePath("/user/dashboard");
+  revalidatePath("/office/[section]/order", "page");
+  revalidatePath("/office/[section]/dashboard", "page");
   // The order took its units off the shelf, so both the products table and this
   // form's picker are now showing stale counts.
-  revalidatePath("/user/product");
-  revalidatePath("/user/order/new");
+  revalidatePath("/office/[section]/product", "page");
+  revalidatePath("/office/[section]/order/new", "page");
   // Same for the edit form's picker, on every order.
-  revalidatePath("/user/order/[slug]/edit", "page");
+  revalidatePath("/office/[section]/order/[slug]/edit", "page");
 
-  redirect(`/user/order?created=${order.code}&slug=${order.slug}`);
+  redirect(`${formSectionBase(formData)}/order?created=${order.code}&slug=${order.slug}`);
 }

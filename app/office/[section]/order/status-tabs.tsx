@@ -25,11 +25,13 @@ import { ordersHref, type OrdersView } from "./orders-href";
  * this page is usually opened to answer.
  */
 export function StatusTabs({
+  base,
   active,
   counts,
   query,
   view,
 }: {
+  base: string;
   active?: DeliveryStatus;
   counts: Record<DeliveryStatus, number>;
   query: string;
@@ -39,7 +41,7 @@ export function StatusTabs({
   // you were on describes a list that no longer exists. The search and layout
   // are carried through, because they narrow/present the same list rather
   // than replacing it.
-  const href = (status?: DeliveryStatus) => ordersHref({ query, status, view });
+  const href = (status?: DeliveryStatus) => ordersHref(base, { query, status, view });
 
   const total = DELIVERY_STATUS_KEYS.reduce((n, s) => n + counts[s], 0);
 

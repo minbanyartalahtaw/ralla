@@ -15,6 +15,7 @@ import {
 import type { DeliveryStatus } from "@/lib/orders";
 
 import { ordersHref } from "./orders-href";
+import { useSection } from "@/app/office/[section]/_components/use-section";
 
 const DEBOUNCE_MS = 300;
 
@@ -27,6 +28,7 @@ export function OrderSearch({
   status?: DeliveryStatus;
   view: "card" | "table";
 }) {
+  const { base } = useSection();
   const router = useRouter();
 
   const [value, setValue] = React.useState(query);
@@ -52,7 +54,7 @@ export function OrderSearch({
     // The status tab and the layout survive; `page` deliberately doesn't.
     // ordersHref() omits it, which is how a caller says "back to the first
     // page" — page 4 of the old query has nothing to do with the new one.
-    router.replace(ordersHref({ query: next.trim(), status, view }), {
+    router.replace(ordersHref(base, { query: next.trim(), status, view }), {
       scroll: false,
     });
   }

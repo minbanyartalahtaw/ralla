@@ -5,11 +5,11 @@ export type ProductsView = {
   sort?: string;
 };
 
-export function productsHref({ query, view, sort }: ProductsView): string {
+export function productsHref(base: string, { query, view, sort }: ProductsView): string {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
   if (view === "table") params.set("view", "table");
   if (sort) params.set("sort", sort);
   const qs = params.toString();
-  return qs ? `/user/product?${qs}` : "/user/product";
+  return qs ? `${base}/product?${qs}` : `${base}/product`;
 }

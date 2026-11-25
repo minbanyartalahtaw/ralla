@@ -28,6 +28,10 @@ import { ProductEditSheet } from "./product-edit-sheet";
 import { ProductSearch } from "./product-search";
 import { productsHref } from "./products-href";
 import { ViewSwitch } from "./view-switch";
+import { getSection } from "@/app/office/[section]/_components/section";
+import { getCurrentStaff } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { StockMark } from "./stock-mark";
 
 export const metadata: Metadata = {
   title: "Products — RALLA",
@@ -50,12 +54,14 @@ function parseSort(raw: unknown): { key: SortKey; desc: boolean } | null {
 
 /** A header that sorts by its column: ascending first, a second click flips it. */
 function SortHead({
+  base,
   label,
   column,
   sort,
   query,
   className = "",
 }: {
+  base: string;
   label: string;
   column: SortKey;
   sort: { key: SortKey; desc: boolean } | null;
@@ -70,7 +76,7 @@ function SortHead({
       aria-sort={active ? (sort.desc ? "descending" : "ascending") : "none"}
     >
       <Link
-        href={productsHref({ query, view: "table", sort: next })}
+        href={productsHref(base, { query, view: "table", sort: next })}
         scroll={false}
         className={`inline-flex items-center gap-1 hover:text-foreground ${active ? "text-foreground" : ""}`}
       >
@@ -88,14 +94,21 @@ function SortHead({
 }
 
 export default async function ProductsPage({
+  params,
   searchParams,
-}: PageProps<"/user/product">) {
+}: PageProps<"/office/[section]/product">) {
+  const { section, base } = await getSection(params);
+  // The editable screen needs both: the admin section, and the right to edit.
+  // Staff — and an admin looking at the staff section — get the read-only one.
+  const staff = await getCurrentStaff();
+  const editable = section === "admin" && staff !== null && can(staff, "manageProducts");
   const { q, view: rawView, created, sort: rawSort } = await searchParams;
   const query = typeof q === "string" ? q : "";
   // Contact cards are the default; only `?view=table` selects the table.
   const view = rawView === "table" ? "table" : "contact";
   const sort = parseSort(rawSort);
-  const products = await listProducts(query);
+  // A switched-off product can't go on an order, so staff don't need it.
+  const products = (await listProducts(query)).filter((p) => editable || p.isActive);
   // Sorted here, not in the query: the whole catalogue is already loaded, and
   // a stable sort keeps the store's active-then-name order among equal values.
   if (sort) {
@@ -125,17 +138,19 @@ export default async function ProductsPage({
           <ProductSearch query={query} view={view} />
         </div>
 
-        <Button nativeButton={false} render={<Link href="/user/product/new" />}>
-          <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
-          New product
-        </Button>
+        {editable ? (
+          <Button nativeButton={false} render={<Link href="/office/admin/product/new" />}>
+            <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
+            New product
+          </Button>
+        ) : null}
       </div>
 
       <div className="mt-4 flex items-center gap-3">
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
           {products.length} {products.length === 1 ? "product" : "products"}
         </p>
-        <ViewSwitch query={query} view={view} />
+        <ViewSwitch base={base} query={query} view={view} />
       </div>
 
       {/* The table view clips to the radius: its header row is a square block of
@@ -164,7 +179,7 @@ export default async function ProductsPage({
                   variant="outline"
                   nativeButton={false}
                   className="mt-4"
-                  render={<Link href="/user/product" />}
+                  render={<Link href={`${base}/product`} />}
                 >
                   Show all products
                 </Button>
@@ -172,41 +187,57 @@ export default async function ProductsPage({
             ) : (
               <>
                 <p className="mt-3 text-xs font-medium">No products yet</p>
-                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-                  Add one and it becomes selectable on a new order.
-                </p>
-                <Button
-                  variant="outline"
-                  nativeButton={false}
-                  className="mt-4"
-                  render={<Link href="/user/product/new" />}
-                >
-                  Add a product
-                </Button>
+                {editable ? (
+                  <>
+                    <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                      Add one and it becomes selectable on a new order.
+                    </p>
+                    <Button
+                      variant="outline"
+                      nativeButton={false}
+                      className="mt-4"
+                      render={<Link href="/office/admin/product/new" />}
+                    >
+                      Add a product
+                    </Button>
+                  </>
+                ) : null}
               </>
             )}
           </div>
         ) : view === "contact" ? (
-          <ProductContacts products={products} />
+          <ProductContacts products={products} readOnly={!editable} />
         ) : (
           <Table className="min-w-[860px]">
             <TableHeader>
               <TableRow className="bg-muted hover:bg-muted">
                 <TableHead className={th}>SKU</TableHead>
-                <SortHead label="Stock" column="stock" sort={sort} query={query} />
+                <SortHead base={base} label="Stock" column="stock" sort={sort} query={query} />
                 <TableHead className={th}>Name</TableHead>
-                <SortHead
+                <SortHead base={base}
                   label="Price"
                   column="price"
                   sort={sort}
                   query={query}
                   className="text-right"
                 />
-                <TableHead className={th}>Status</TableHead>
+                {editable ? <TableHead className={th}>Status</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
               {products.map((p) => {
+                if (!editable) {
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-mono text-[11px] font-medium">{p.sku}</TableCell>
+                      <TableCell>
+                        <StockMark stock={p.stock} />
+                      </TableCell>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="numeric text-right">{formatKyat(p.price)}</TableCell>
+                    </TableRow>
+                  );
+                }
                 const activity = PRODUCT_ACTIVITY[productActivity(p.isActive)];
                 // Read-only: the whole row opens the same edit sheet as the
                 // contact view, so there is one place a product is changed.

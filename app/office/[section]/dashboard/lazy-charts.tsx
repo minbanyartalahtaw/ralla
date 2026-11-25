@@ -13,7 +13,7 @@ type TrendChartProps = { data: TrendPoint[]; bucket: TrendBucket };
 // needed until the dashboard's own data has already streamed in. Splitting it
 // into its own on-demand chunk keeps it off the page's initial JS — that
 // initial payload is what actually blocks the main thread on a cold PWA open,
-// since /user/dashboard is the manifest's start_url.
+// since the dashboard is the admin home page.
 export const RevenueChart = dynamic<TrendChartProps>(
   () => import("./revenue-chart").then((m) => m.RevenueChart),
   { ssr: false, loading: () => <FlowerLoader size="sm" /> },

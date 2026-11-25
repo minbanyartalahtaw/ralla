@@ -5,17 +5,18 @@ import { cache } from "react";
 import { BackButton } from "@/components/back-button";
 import { getOrderBySlug } from "@/lib/order-store";
 import { listProductsForOrder } from "@/lib/product-store";
-import { RecordCrumb } from "@/app/user/_components/user-breadcrumb";
+import { RecordCrumb } from "@/app/office/[section]/_components/user-breadcrumb";
 
 import { OrderForm, type OrderFormInitial } from "../../order-form";
 import { updateOrderAction } from "./actions";
+import { getSection } from "@/app/office/[section]/_components/section";
 
 // The title needs the code, which the slug URL no longer carries.
 const loadOrder = cache(getOrderBySlug);
 
 export async function generateMetadata({
   params,
-}: PageProps<"/user/order/[slug]/edit">): Promise<Metadata> {
+}: PageProps<"/office/[section]/order/[slug]/edit">): Promise<Metadata> {
   const { slug } = await params;
   const order = await loadOrder(slug);
   return { title: order ? `Edit ${order.code} — RALLA` : "Order not found — RALLA" };
@@ -23,7 +24,8 @@ export async function generateMetadata({
 
 export default async function EditOrderPage({
   params,
-}: PageProps<"/user/order/[slug]/edit">) {
+}: PageProps<"/office/[section]/order/[slug]/edit">) {
+  const { base } = await getSection(params);
   const { slug } = await params;
   const order = await loadOrder(slug);
   if (!order) notFound();
@@ -72,7 +74,7 @@ export default async function EditOrderPage({
           on an invoice, and the status moves from the orders list, which
           records when it moved. */}
       <div className="flex items-center gap-3">
-        <BackButton fallback={`/user/order/${order.slug}`} />
+        <BackButton fallback={`${base}/order/${order.slug}`} />
         <h1 className="flex min-w-0 items-baseline gap-2 text-lg font-semibold tracking-tight text-foreground">
           Edit
           {/* Never wraps: a code broken after `RL-` reads as a rendering fault

@@ -18,6 +18,7 @@ import {
 } from "@/lib/orders";
 
 import { updateOrderStatusAction } from "./actions";
+import { useSection } from "@/app/office/[section]/_components/use-section";
 
 /**
  * The status chip, clickable to change it.
@@ -37,6 +38,7 @@ export function StatusSelect({
   slug: string;
   status: DeliveryStatus;
 }) {
+  const { base } = useSection();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
@@ -61,7 +63,7 @@ export function StatusSelect({
         toast.success(`${code} marked ${DELIVERY_STATUS[next].label}.`, {
           action: {
             label: "View details",
-            onClick: () => router.push(`/user/order/${slug}`),
+            onClick: () => router.push(`${base}/order/${slug}`),
           },
         });
       } catch {

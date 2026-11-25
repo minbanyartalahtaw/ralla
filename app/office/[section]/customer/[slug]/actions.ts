@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { parseAvatarId } from "@/lib/avatar";
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import {
   getCustomer,
   updateCustomer,
@@ -24,7 +24,7 @@ import type { UpdateCustomerState } from "./state";
 export async function updateCustomerAction(
   formData: FormData,
 ): Promise<UpdateCustomerState> {
-  await requireSession();
+  await requireAbility("manageCustomers");
 
   const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
   if (!Number.isSafeInteger(id) || id < 1) {
@@ -67,10 +67,10 @@ export async function updateCustomerAction(
     note,
   });
 
-  revalidatePath(`/user/customer/${customer.slug}`);
+  revalidatePath("/office/[section]/customer/[slug]", "page");
   // The customer list shows the name; the order form's search reads the table
   // fresh on every keystroke, so it needs nothing revalidated.
-  revalidatePath("/user/customer");
+  revalidatePath("/office/[section]/customer", "page");
 
   return { errors: {}, ok: true };
 }
@@ -88,7 +88,7 @@ export async function updateCustomerAvatarAction(
   id: number,
   avatar: string | null,
 ): Promise<{ ok: boolean; message?: string }> {
-  await requireSession();
+  await requireAbility("manageCustomers");
 
   if (avatar !== null && !parseAvatarId(avatar)) {
     return { ok: false, message: "Unknown avatar." };
@@ -101,8 +101,8 @@ export async function updateCustomerAvatarAction(
 
   await updateCustomerAvatar(id, avatar);
 
-  revalidatePath(`/user/customer/${customer.slug}`);
-  revalidatePath("/user/customer");
+  revalidatePath("/office/[section]/customer/[slug]", "page");
+  revalidatePath("/office/[section]/customer", "page");
 
   return { ok: true };
 }

@@ -4,9 +4,11 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { cache } from "react";
 import type { Metadata } from "next";
-import { getOrderBySlug } from "@/lib/order-store";
+import { getOrderBySlug, listOrderChanges } from "@/lib/order-store";
 import { getCustomer } from "@/lib/customer-store";
-import { RecordCrumb } from "@/app/user/_components/user-breadcrumb";
+import { RecordCrumb } from "@/app/office/[section]/_components/user-breadcrumb";
+import { requireAbility } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import {
   DELIVERY_STATUS,
   PAYMENT_METHOD,
@@ -15,14 +17,17 @@ import {
   itemCount,
   lineTotal,
   type DeliveryStatus,
+  type OrderChange,
 } from "@/lib/orders";
 
 import { BackButton } from "@/components/back-button";
 import { Button } from "@/components/ui/button";
 import { CreatedToast } from "@/components/created-toast";
 import { RallaMark, RallaWordmark } from "@/components/ralla-logo";
+import { DeleteOrder } from "./delete-order";
 import { DownloadInvoice } from "./download-invoice";
 import { OrderNote } from "./order-note";
+import { getSection } from "@/app/office/[section]/_components/section";
 
 
 
@@ -34,7 +39,7 @@ const loadOrder = cache(getOrderBySlug);
 
 export async function generateMetadata({
   params,
-}: PageProps<"/user/order/[slug]">): Promise<Metadata> {
+}: PageProps<"/office/[section]/order/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const order = await loadOrder(slug);
 
@@ -87,13 +92,127 @@ function MetaRow({
   );
 }
 
+const CHANGE_LABEL: Record<OrderChange["action"], string> = {
+  created: "created the order",
+  updated: "edited",
+  status: "changed the status",
+  note: "changed the note",
+  deleted: "deleted the order",
+  restored: "restored the order",
+};
+
+const FIELD_LABEL: Record<string, string> = {
+  customer: "Customer",
+  phone: "Phone",
+  city: "City",
+  address: "Address",
+  payment: "Payment",
+  note: "Note",
+  items: "Items",
+  total: "Total",
+  status: "Status",
+};
+
+/** One readable line per changed field: `Address: Old street → New street`. */
+function changeText(change: OrderChange) {
+  const value = (v: string) =>
+    change.field === "status" && v in DELIVERY_STATUS
+      ? DELIVERY_STATUS[v as DeliveryStatus].label
+      : v || "(empty)";
+  if (change.field === "items" && !change.oldValue) return `Added ${change.newValue}`;
+  if (change.field === "items" && !change.newValue) return `Removed ${change.oldValue}`;
+  const name = FIELD_LABEL[change.field] ?? change.field;
+  return `${name}: ${value(change.oldValue)} → ${value(change.newValue)}`;
+}
+
+type HistoryEntry = {
+  key: string;
+  who: string;
+  what: string;
+  lines: string[];
+  at: Date;
+  /** Status-moving entries take the status's traffic-light dot. */
+  status?: DeliveryStatus;
+};
+
+/**
+ * One timeline from the change log plus the status events it doesn't cover.
+ *
+ * One save writes one row per changed field, all with the same person and
+ * timestamp — shown as one entry with a line per field. Since tracking began,
+ * every status event is written in the same transaction as a `created` or
+ * `status` change row, so it shares that row's timestamp exactly; an event
+ * with no such twin is from before tracking and is shown on its own.
+ */
+function historyEntries(
+  changes: OrderChange[],
+  events: { id: number; status: DeliveryStatus; note: string; changedBy: string; changedAt: Date }[],
+): HistoryEntry[] {
+  const entries: (HistoryEntry & { change: OrderChange })[] = [];
+  for (const change of changes) {
+    const last = entries.at(-1)?.change;
+    const line = change.field ? [changeText(change)] : [];
+    if (
+      last &&
+      last.action === change.action &&
+      last.staffName === change.staffName &&
+      last.changedAt.getTime() === change.changedAt.getTime()
+    ) {
+      // Rows arrive newest first; put each save's lines back in the order written.
+      entries.at(-1)!.lines.unshift(...line);
+    } else {
+      entries.push({
+        change,
+        key: `c${change.id}`,
+        who: change.staffName,
+        what: CHANGE_LABEL[change.action],
+        lines: line,
+        at: change.changedAt,
+        status:
+          change.action === "created"
+            ? "pending"
+            : change.action === "status" && change.newValue in DELIVERY_STATUS
+              ? (change.newValue as DeliveryStatus)
+              : undefined,
+      });
+    }
+  }
+
+  const tracked = new Set(
+    changes
+      .filter((c) => c.action === "created" || c.action === "status")
+      .map((c) => c.changedAt.getTime()),
+  );
+  const legacy: HistoryEntry[] = events
+    .filter((e) => !tracked.has(e.changedAt.getTime()))
+    .map((e) => ({
+      key: `e${e.id}`,
+      // "system" marks an older order's first event; "" is an unnamed change.
+      who: e.changedBy === "system" ? "" : e.changedBy,
+      what:
+        e.changedBy === "system"
+          ? "Order created"
+          : e.changedBy
+            ? "changed the status"
+            : "Status changed",
+      lines: [`Status: ${DELIVERY_STATUS[e.status].label}`, ...(e.note ? [e.note] : [])],
+      at: e.changedAt,
+      status: e.status,
+    }));
+
+  return [...entries, ...legacy].sort((x, y) => y.at.getTime() - x.at.getTime());
+}
+
 export default async function OrderDetailPage({
   params,
   searchParams,
-}: PageProps<"/user/order/[slug]">) {
+}: PageProps<"/office/[section]/order/[slug]">) {
+  const staff = await requireAbility("writeOrders");
+  const { base } = await getSection(params);
   const { slug } = await params;
   const order = await loadOrder(slug);
   if (!order) notFound();
+  const changes = await listOrderChanges(order.id);
 
   // Set by the edit form's redirect, which lands back here rather than on a
   // list — so the toast is the only thing that says the save went through.
@@ -103,6 +222,7 @@ export default async function OrderDetailPage({
   // is the order's own snapshot — a walk-in has no record to link to at all.
   const customer = order.customerId ? await getCustomer(order.customerId) : null;
   const events = order.statusEvents;
+  const history = historyEntries(changes, events);
 
   return (
     <div className="mx-auto max-w-[640px]">
@@ -117,7 +237,7 @@ export default async function OrderDetailPage({
       {/* App chrome. Sits outside the sheet and out of the print stylesheet, so
           neither a crop nor a PDF picks it up. */}
       <div className="flex items-center justify-between gap-3">
-        <BackButton fallback="/user/order" />
+        <BackButton fallback={`${base}/order`} />
         <div className="flex items-center gap-2">
           {/* Straight to the same numbered form the order was placed on, so
               correcting one is the page staff already know rather than a
@@ -126,7 +246,7 @@ export default async function OrderDetailPage({
           <Button
             variant="secondary"
             nativeButton={false}
-            render={<Link href={`/user/order/${order.slug}/edit`} />}
+            render={<Link href={`${base}/order/${order.slug}/edit`} />}
           >
             <HugeiconsIcon icon={PencilEdit02Icon} data-icon="inline-start" />
             Edit
@@ -192,7 +312,7 @@ export default async function OrderDetailPage({
                 <div className="flex flex-wrap items-baseline gap-x-2">
                   {customer ? (
                     <Link
-                      href={`/user/customer/${customer.slug}`}
+                      href={`${base}/customer/${customer.slug}`}
                       className="font-semibold text-foreground decoration-border underline-offset-2 hover:underline"
                     >
                       {order.customerName}
@@ -356,53 +476,62 @@ export default async function OrderDetailPage({
       <section className="mt-8">
         <h2 className={label}>Note</h2>
         <div className="mt-3 rounded-lg border bg-card px-5 py-4">
-          <OrderNote orderId={order.id} slug={order.slug} note={order.note} />
+          <OrderNote orderId={order.id} note={order.note} />
         </div>
       </section>
 
-      {/* Outside the sheet on purpose: when the order moved is an internal
-          record, so it stays off both the print and a crop of the invoice.
-          Newest first, so the current status is the one staff see without
-          scrolling. */}
+      {/* Outside the sheet on purpose: who changed what, and when the order
+          moved, is an internal record — it stays off both the print and a
+          crop of the invoice. Newest first. Orders from before the log
+          existed have no "created" row, so that line says so instead. */}
       <section className="mt-8">
-        <h2 className={label}>Order history</h2>
+        <h2 className={label}>History</h2>
         <div className="mt-3 rounded-lg border bg-card px-5 py-4">
-          {events.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">
-              No status changes recorded.
-            </p>
-          ) : (
-            <ol className="space-y-3.5 border-l pl-5">
-              {events.map((event, i) => {
-                const current = i === 0;
-                return (
-                  <li key={event.id} className="relative">
-                    {/* The dot sits on the connector line; ring-card punches
-                        it through. */}
-                    <span
-                      className={`absolute top-1 -left-6 size-2 rounded-full ring-4 ring-card ${DELIVERY_STATUS[event.status].dot}`}
-                      aria-hidden
-                    />
-                    <p
-                      className={`text-xs ${current ? "font-medium" : "text-muted-foreground"}`}
-                    >
-                      {DELIVERY_STATUS[event.status].label}
-                    </p>
-                    <p className="numeric text-[11px] text-muted-foreground">
-                      {formatDateTime(event.changedAt)}
-                    </p>
-                    {event.note ? (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {event.note}
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
+          <ol className="space-y-3.5 border-l pl-5">
+            {history.map(({ key, who, what, lines, at, status }) => (
+              <li key={key} className="relative">
+                {/* The dot sits on the connector line; ring-card punches it
+                    through. Status moves wear their traffic-light colour. */}
+                <span
+                  className={`absolute top-1 -left-6 size-2 rounded-full ring-4 ring-card ${status ? DELIVERY_STATUS[status].dot : "bg-muted-foreground/40"}`}
+                  aria-hidden
+                />
+                <p className="text-xs">
+                  {who ? <span className="font-medium">{who} </span> : null}
+                  <span className={who ? "text-muted-foreground" : "font-medium"}>
+                    {what}
+                  </span>
+                </p>
+                {lines.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5 text-[11px] [overflow-wrap:anywhere] text-muted-foreground">
+                    {lines.map((line, j) => (
+                      <li key={j}>{line}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                <p className="numeric mt-0.5 text-[11px] text-muted-foreground">
+                  {formatDateTime(at)}
+                </p>
+              </li>
+            ))}
+            {changes.some((c) => c.action === "created") || events.length > 0 ? null : (
+              <li className="relative">
+                <span
+                  className="absolute top-1 -left-6 size-2 rounded-full bg-muted-foreground/40 ring-4 ring-card"
+                  aria-hidden
+                />
+                <p className="text-xs text-muted-foreground">Created — before tracking</p>
+              </li>
+            )}
+          </ol>
         </div>
       </section>
+
+      {can(staff, "deleteOrders") ? (
+        <div className="mt-8 flex justify-end">
+          <DeleteOrder orderId={order.id} code={order.code} />
+        </div>
+      ) : null}
     </div>
   );
 }

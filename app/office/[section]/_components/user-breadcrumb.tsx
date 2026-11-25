@@ -12,9 +12,11 @@ import {
 } from "@/components/ui/breadcrumb";
 
 /**
- * Explicit trail per route rather than one derived from path segments —
- * `/user/order/new` has no page at `/user/order`, so a segment walk would
- * invent a crumb for a route that 404s. Add a row here when you add a route.
+ * Explicit trail per route rather than one derived from path segments, so a
+ * segment walk can't invent a crumb for a route that doesn't exist. Add a row
+ * here when you add a route. Keys are paths inside a section: the
+ * `/office/admin` or `/office/staff` prefix is stripped first, so both
+ * sections share one table.
  *
  * Nothing here is a link. The trail says where you are, not how to leave: the
  * way back is the BackButton on the page itself. `BreadcrumbPage` already
@@ -22,17 +24,19 @@ import {
  * is — there is nothing to click.
  */
 const TRAILS = {
-  "/user/dashboard": ["Dashboard"],
-  "/user/order": ["Orders"],
-  "/user/order/new": ["Orders", "New order"],
-  "/user/customer": ["Customers"],
-  "/user/customer/new": ["Customers", "New customer"],
-  "/user/product": ["Products"],
-  "/user/product/new": ["Products", "New product"],
-  "/user/settings": ["Settings"],
+  "/dashboard": ["Dashboard"],
+  "/order": ["Orders"],
+  "/order/new": ["Orders", "New order"],
+  "/order/deleted": ["Orders", "Deleted orders"],
+  "/customer": ["Customers"],
+  "/customer/new": ["Customers", "New customer"],
+  "/product": ["Products"],
+  "/product/new": ["Products", "New product"],
+  "/settings": ["Settings"],
+  "/staff": ["Staff"],
   // Unlinked and URL-only, but it still has to name itself — without a row
   // here the trail falls back to "Dashboard", which would be a lie.
-  "/user/theme": ["Theme reference"],
+  "/theme": ["Theme reference"],
 } as const;
 
 /**
@@ -43,12 +47,12 @@ const TRAILS = {
  * Add a row here when you add a detail route.
  */
 const DETAIL_PARENTS = [
-  { prefix: "/user/customer/", label: "Customers" },
-  { prefix: "/user/order/", label: "Orders" },
+  { prefix: "/customer/", label: "Customers" },
+  { prefix: "/order/", label: "Orders" },
 ] as const;
 
 /**
- * Pages that hang off a record rather than being one — `/user/order/RL-…/edit`.
+ * Pages that hang off a record rather than being one — `order/<slug>/edit`.
  * Named here so the trail stays three deep instead of falling through to the
  * "Dashboard" fallback, which would put a crumb on screen for a page nobody is
  * on. Add a row when you add a sub-route.
@@ -102,7 +106,7 @@ function trailFor(pathname: string, record: string | null): readonly string[] {
 }
 
 export function UserBreadcrumb() {
-  const pathname = usePathname();
+  const pathname = usePathname().replace(/^\/office\/(admin|staff)/, "");
   const [record] = use(RecordContext);
   const trail = trailFor(pathname, record);
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { requireAbility } from "@/lib/auth";
 import { createProduct, findProductBySku } from "@/lib/product-store";
 import { isValidSku, normalizeSku, parseStock } from "@/lib/products";
 import type { CreateProductState } from "./state";
@@ -12,7 +12,7 @@ export async function createProductAction(
   _prevState: CreateProductState,
   formData: FormData,
 ): Promise<CreateProductState> {
-  await requireSession();
+  await requireAbility("manageProducts");
 
   const sku = normalizeSku(String(formData.get("sku") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
@@ -67,9 +67,9 @@ export async function createProductAction(
     isActive,
   });
 
-  revalidatePath("/user/product");
+  revalidatePath("/office/[section]/product", "page");
   // A new active product changes what the order form can pick.
-  revalidatePath("/user/order/new");
+  revalidatePath("/office/[section]/order/new", "page");
 
-  redirect(`/user/product?created=${product.sku}`);
+  redirect(`/office/admin/product?created=${product.sku}`);
 }
