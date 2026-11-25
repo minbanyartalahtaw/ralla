@@ -23,8 +23,6 @@ import {
   listOrdersPage,
   normalizeOrderQuery,
 } from "@/lib/order-store";
-import { getCurrentStaff } from "@/lib/auth";
-import { can } from "@/lib/permissions";
 
 import { Pager } from "./pager";
 import { StatusSelect } from "./status-select";
@@ -53,14 +51,12 @@ export default async function OrdersPage({
   params,
   searchParams,
 }: PageProps<"/office/[section]/order">) {
-  const { section, base } = await getSection(params);
+  const { base } = await getSection(params);
   const { q, status: rawStatus, page: rawPage, created, deleted, slug: createdSlug, view: rawView } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const createdCode = typeof created === "string" ? created : undefined;
   // Set by deleteOrderAction's redirect, which lands here.
   const deletedCode = typeof deleted === "string" ? deleted : undefined;
-  // The layout has already turned away anyone without a session.
-  const staff = await getCurrentStaff();
   const status = parseDeliveryStatus(
     typeof rawStatus === "string" ? rawStatus : undefined,
   );
@@ -117,11 +113,6 @@ export default async function OrdersPage({
           <OrderSearch query={query} status={status} view={view} />
         </div>
 
-        {section === "admin" && staff && can(staff, "viewDeletedOrders") ? (
-          <Button variant="ghost" nativeButton={false} render={<Link href="/office/admin/order/deleted" />}>
-            Deleted orders
-          </Button>
-        ) : null}
         <Button nativeButton={false} render={<Link href={`${base}/order/new`} />}>
           <HugeiconsIcon icon={PlusSignIcon} data-icon="inline-start" />
           New order
