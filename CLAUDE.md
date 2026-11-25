@@ -2,17 +2,21 @@
 
 # RALLA — Cosmetic POS Store Management
 
-Internal **admin-only web app** for RALLA, a cosmetics store. Its job is to let staff
-track **orders** and their **delivery status**. Online website only — there is no
-customer-facing storefront and no native/offline POS terminal in this repo.
+Internal web app for RALLA, a cosmetics store, used by the **owner (admin)** and her
+**staff** to write and track **orders**, their **delivery status**, products/stock and
+customers. Online website only — there is no customer-facing storefront and no
+native/offline POS terminal in this repo.
 
 ## Scope
 
 **In scope**
-🌸
-- Admin pages for viewing and managing orders.
-- Delivery status tracking (status per order, updated by admin).
-- Whatever supporting UI those two need (auth for admins, lists, filters, detail views).
+
+- Orders: create, edit, delivery status, notes, invoice image, soft delete/restore,
+  per-order change history.
+- Products (catalog, price, stock) and customers.
+- Two roles, **admin** and **staff**, with different rights (see Roles below and
+  `docs/role.md`). Staff accounts are managed by an admin in the app.
+- Whatever supporting UI those need (sign-in, lists, filters, detail views, dashboard).
 
 **Out of scope (unless the user says otherwise)**
 
@@ -21,8 +25,33 @@ customer-facing storefront and no native/offline POS terminal in this repo.
 - Anything not asked for — this project is early and the owner will expand the spec
   incrementally. Build what is requested; don't invent modules ahead of the ask.
 
-> This file is intentionally short. The owner will extend it as features land. When a
-> real decision is made (schema, auth provider, status model), record it here.
+> When a real decision is made (schema, roles, status model, hosting), record it here.
+
+## Roles
+
+| Area | Admin | Staff |
+|---|---|---|
+| Dashboard | ✓ | — |
+| Products: list, price, stock left | ✓ | ✓ read only (low stock ≤ 5 marked) |
+| Products: add, edit, stock, price, on/off | ✓ | — |
+| Orders: see all, add, edit, status, note | ✓ | ✓ |
+| Orders: delete (soft) | ✓ | ✓ |
+| Deleted orders: see, restore | ✓ | — |
+| Order history (who changed what, when) | ✓ | ✓ |
+| Customers | ✓ full, editable, with stats | ✓ read only, no stats/"Spent" |
+| Customers: add new | ✓ | ✓ |
+| Staff accounts (`/office/admin/staff`) | ✓ staff accounts only, never another admin | — |
+| Own settings | name + password | password only |
+| Style guide `/office/admin/theme` | ✓ (unlinked) | — |
+
+The source of truth is `ROLE_ABILITIES` in `lib/permissions.ts`; this table must match
+it. After sign-in: admin → `/office/admin/dashboard`, staff → `/office/staff/order/new`.
+
+**Sidebar** (`app/office/[section]/_components/nav.ts`): two groups. **Admin**
+(Dashboard, Orders + New order, Products, Customers, Deleted orders, Manage Staff) and
+**Staff** (New order, Orders, Products, Customers). Admins see both, with Staff folded,
+so they can open exactly what staff see. Staff get only the Staff group — it is left
+out on the server, not hidden with CSS.
 
 ## Stack
 
@@ -61,7 +90,16 @@ npm run db:migrate # apply migrations (hangs after applying — Ctrl+C is safe,
                    #   then run `npx prisma generate` separately)
 npm run db:seed    # reset to the development fixtures
 npm run db:studio  # browse the data
+
+npm run admin:create  # first admin only; refuses once any admin exists
+npm run staff:create  # dev-only staff account; refuses a production DATABASE_URL
 ```
+
+`npm run db:backup` points to `scripts/backup-db.sh`, which **does not exist**. Back up
+production from the Prisma Console until it is written.
+
+**`db:seed` deletes every row first.** Never run it, `migrate dev`, `migrate reset` or
+`db push` while `DATABASE_URL` points at production.
 
 No test runner is set up yet.
 
@@ -245,7 +283,13 @@ changes and deploys must be interleaved), and the pooler leaks Prisma's advisory
 the second migration of a session hangs. That file is the runbook — follow it rather
 than improvising.
 
-`20261120000000_add_slugs` is **not yet applied to production**. It only adds columns
+**Pending for production** (apply before deploying the code that needs them, following
+`docs/role.md` Phase 7): `20261125000000_order_changes` (additive: `order_changes`
+table, `orders.created_by_id`, `deleted_at`, `deleted_by_id`) and, as of the last
+check, `20261120000000_add_slugs`. Confirm with `npx prisma migrate status` against
+production before assuming either way.
+
+`20261120000000_add_slugs` It only adds columns
 with a default (which also backfills existing rows), so it needs no interleaving:
 migrate first, then deploy. Deploying first breaks every order and customer page.
 
@@ -326,6 +370,42 @@ a forged `x-forwarded-for` gets a fresh bucket, so move it to Postgres if this e
 faces the open internet.
 
 `/` only redirects. Everything real lives under `/office`.
+
+## Hosting and network
+
+- **Vercel**, functions in Singapore (`sin1`). Vercel builds with
+  `prisma generate && next build`; it **never runs migrations** — production schema
+  changes are applied by hand first (see `docs/production-migrations.md`).
+- **Database:** Prisma Postgres, Singapore, reached through the pooler
+  (`pooled.db.prisma.io`). One `DATABASE_URL` in `.env` serves local and production,
+  so check its host before every database command. Day to day it points at the local
+  Docker database.
+- **Domain:** `rallapos.com` (bought at Namecheap) → nameservers at **Cloudflare**
+  (proxied, orange cloud, SSL Full (strict)) → Vercel. `rallapos.com` redirects to
+  `www.rallapos.com`.
+- **Why Cloudflare:** Myanmar providers block some Vercel IP addresses, so
+  `ralla.vercel.app` needs a VPN there. Through Cloudflare the client's provider only
+  sees Cloudflare addresses. `ralla.vercel.app` still works but is not the address to
+  give users. Don't remove the Cloudflare proxy or point DNS straight at Vercel.
+- The app has no hard-coded host names; keep it that way.
+
+## Git and workflow
+
+- The role/staff work lives on branch **`feat/staff-role`**. Work there; never commit
+  or push to `main` directly. Merging to `main` deploys to production.
+- "Push to main" means `docs/role.md` Phase 7: check the new migration SQL is
+  additive, back up, apply migrations to production, verify row counts, **then**
+  merge and push.
+- The owner commits. Don't commit or push unless asked.
+
+## Brand
+
+- The client's logo is a cat inside a rounded R with a "Ralla" wordmark, coral
+  `#FF8384` on cream `#FCFDD1` (`public/logo/`, `public/logo_text.png`,
+  `app/favicon.ico`, `components/ralla-logo.tsx`). It was traced from JPGs; swap in the
+  original vector if the client's designer sends one.
+- The invoice and its saved image use the logo's cream and coral. The rest of the app
+  stays on the berry theme above.
 
 ## Conventions
 
